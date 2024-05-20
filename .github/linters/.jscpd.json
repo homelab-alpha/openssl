@@ -1,0 +1,13 @@
+{
+  "threshold": 0,
+  "reporters": [
+    "consoleFull"
+  ],
+  "ignore": [
+    "**/github/workspace/certificate-authority/**",
+    "**/github/workspace/certificate/**",
+    "**/tmp/lint/certificate-authority/**",
+    "**/tmp/lint/certificate/**"
+  ],
+  "absolute": true
+}
