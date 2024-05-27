@@ -2,8 +2,10 @@
 
 [![Super-Linter](https://github.com/homelab-alpha/openssl/actions/workflows/super-linter.yml/badge.svg)](https://github.com/homelab-alpha/openssl/actions/workflows/super-linter.yml)
 
-Welcome to the Homelab-Alpha openssl repository. This is the source for
-[Homelab-Alpha - OpenSSL].
+Welcome to the Homelab-Alpha OpenSSL Repository!
+
+For all related documentation and more information about this repository, please
+visit [Homelab-Alpha/OpenSSL].
 
 ## Provide feedback
 
@@ -56,7 +58,7 @@ how to contribute, see [contributing].
 &copy; 2024 Homelab-Alpha and its repositories are licensed under the terms of
 the [license] agreement.
 
-[Homelab-Alpha - OpenSSL]: https://homelab-alpha.nl/openssl
+[Homelab-Alpha/OpenSSL]: https://homelab-alpha.nl/openssl
 [Community]: https://github.com/homelab-alpha/openssl/discussions
 [Bug report]:
   https://github.com/homelab-alpha/openssl/issues/new?&template=bug_report.md
