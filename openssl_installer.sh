@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Script Name: Add content to .bashrc
+# Script Name: openssl_installer.sh
 # Author: GJS (homelab-aplha)
-# Date: 2024-03-23T06:39:01Z
-# Version: 1.0
+# Date: 2024-06-05T08:42:08+02:00
+# Version: 1.0.1
 
 # Description:
 # This script adds specified content to the ~/.bashrc file, avoiding duplication.
