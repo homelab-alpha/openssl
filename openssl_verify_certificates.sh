@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Script Name: openssl_verify_certificates.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:55:42+02:00
+# Version: 1.0.1
+
+# Description:
+# This script verifies SSL/TLS certificates by checking them against their
+# corresponding chain of trust. It performs various checks including verification
+# of root, intermediate, and individual certificates. The script supports a
+# verbose mode for detailed output during the verification process.
+
+# Usage: ./openssl_verify_certificates.sh [-v|--verbose]
+
 # Define directories
 certificates_dir="$HOME/ssl/certificates/certs"
 intermediate_dir="$HOME/ssl/intermediate/certs"
