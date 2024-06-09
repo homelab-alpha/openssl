@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# Script Name: cert_ecdsa_server.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:16:36+02:00
+# Version: 1.0.1
+
+# Description:
+# This script facilitates the creation of an ECDSA server certificate. It
+# automates the process of generating the private key, creating a Certificate
+# Signing Request (CSR), and issuing the final certificate. Additionally, it
+# creates an extension file for certificate attributes, bundles the certificate
+# with an intermediate CA chain, and performs several verification steps.
+# The script also prepares a certificate bundle for use with HAProxy and converts
+# the certificate into various formats for different applications.
+
+# Usage: ./cert_ecdsa_server.sh
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it

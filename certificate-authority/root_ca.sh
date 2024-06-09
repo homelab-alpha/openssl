@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Script Name: root_ca.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:16:24+02:00
+# Version: 1.0.1
+
+# Description:
+# This script sets up and manages a Root Certificate Authority (CA). It defines
+# necessary directory paths, renews database serial numbers, generates ECDSA keys,
+# creates Certificate Signing Requests (CSRs), and issues the root certificate.
+# Additionally, it verifies the root certificate and creates a CA chain bundle,
+# ensuring the integrity and correctness of the generated keys, CSRs, and certificates.
+
+# Usage: ./root_ca.sh
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it

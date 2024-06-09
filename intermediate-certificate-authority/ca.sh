@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Script Name: ca.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:16:27+02:00
+# Version: 1.0.1
+
+# Description:
+# This script facilitates the setup and management of an Intermediate Certificate
+# Authority (CA). It defines directory paths, renews database serial numbers,
+# generates ECDSA keys, creates Certificate Signing Requests (CSRs), and issues
+# the intermediate certificate. The script also creates and verifies the
+# intermediate CA chain bundle, ensuring the validity and integrity of the
+# generated keys, CSRs, and certificates.
+
+# Usage: ./ca.sh
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it

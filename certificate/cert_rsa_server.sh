@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Script Name: cert_rsa_server.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:16:42+02:00
+# Version: 1.0.1
+
+# Description:
+# This script facilitates the creation and management of RSA certificates for
+# server authentication. It sets up directory paths, renews database serial
+# numbers, generates RSA keys, creates Certificate Signing Requests (CSR), and
+# certificates, verifies these certificates, and prepares certificate chain
+# bundles for use with services like HAProxy. It also provides functionality to
+# check the integrity and details of the generated keys, CSRs, and certificates.
+
+# Usage: ./cert_rsa_server.sh
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it

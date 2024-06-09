@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Script Name: cert_rsa_client.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:16:39+02:00
+# Version: 1.0.1
+
+# Description:
+# This script handles the creation and management of RSA certificates for client
+# authentication. It sets up directory paths, renews database serial numbers,
+# generates RSA keys, creates Certificate Signing Requests (CSRs), and
+# certificates. It also verifies these certificates and prepares certificate
+# chain bundles. The script includes functionality to check the details and
+# integrity of the generated keys, CSRs, and certificates.
+
+# Usage: ./cert_rsa_client.sh
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it

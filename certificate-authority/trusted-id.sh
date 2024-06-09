@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Script Name: trusted-id.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-09T09:16:22+02:00
+# Version: 1.0.1
+
+# Description:
+# This script generates and manages a trusted root certificate. It sets up
+# directory paths, renews database serial numbers, generates an ECDSA key,
+# creates a self-signed certificate, verifies the certificate, checks the
+# private key, and converts the certificate format.
+
+# Usage: ./trusted-id.sh
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it
