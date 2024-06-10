@@ -1,5 +1,27 @@
 #!/bin/bash
 
+# Script Name: openssl_setup.sh
+# Author: GJS (homelab-alpha)
+# Date: 2024-06-10T13:03:31+02:00
+# Version: 1.0.1
+
+# Description:
+# This script sets up a directory structure for SSL certificate management, generates
+# random serial numbers for certificate databases, and creates OpenSSL configuration
+# files for a trusted identity (root certificate authority) and time-stamping authority (TSA).
+# Requirements: OpenSSL installed, write permissions in the specified directories.
+
+# Usage:
+# Run the script directly without any arguments:
+# ./ssl_setup.sh
+
+# Examples:
+# ./ssl_setup.sh
+
+# Notes:
+# - Ensure OpenSSL is installed on your system.
+# - The script creates directories and files under $HOME/ssl.
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it
