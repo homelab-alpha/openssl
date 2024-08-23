@@ -3,7 +3,7 @@
 # Script Name: root_ca.sh
 # Author: GJS (homelab-alpha)
 # Date: 2024-06-09T09:16:24+02:00
-# Version: 1.0.1
+# Version: 1.0
 
 # Description:
 # This script sets up and manages a Root Certificate Authority (CA). It defines

@@ -3,7 +3,7 @@
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
 # Date: 2024-06-09T09:16:27+02:00
-# Version: 1.0.1
+# Version: 1.0
 
 # Description:
 # This script facilitates the setup and management of an Intermediate Certificate

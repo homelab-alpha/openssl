@@ -3,7 +3,7 @@
 # Script Name: cert_ecdsa_localhost.sh
 # Author: GJS (homelab-alpha)
 # Date: 2024-06-09T09:16:33+02:00
-# Version: 1.0.1
+# Version: 1.0
 
 # Description:
 # This script is designed to generate an ECDSA certificate specifically for a

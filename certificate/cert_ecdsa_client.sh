@@ -3,7 +3,7 @@
 # Script Name: cert_ecdsa_client.sh
 # Author: GJS (homelab-alpha)
 # Date: 2024-06-09T09:16:30+02:00
-# Version: 1.0.1
+# Version: 1.0
 
 # Description:
 # This script generates an ECDSA client certificate, including the creation of
