@@ -2,8 +2,8 @@
 
 # Script Name: cert_ecdsa_localhost.sh
 # Author: GJS (homelab-alpha)
-# Date: 2024-06-09T09:16:33+02:00
-# Version: 1.0
+# Date: 2024-10-28T10:37:39+01:00
+# Version: 1.1.0
 
 # Description:
 # This script is designed to generate an ECDSA certificate specifically for a
@@ -34,7 +34,6 @@ print_section_header() {
 }
 
 # Certificate information.
-file_name=localhost
 fqdn=localhost
 ipv4=", IP:127.0.0.1"
 
@@ -54,11 +53,11 @@ generate_random_hex >"$intermediate_dir/db/crlnumber"
 
 # Generate ECDSA key.
 print_section_header "Generate ECDSA key"
-openssl ecparam -name secp384r1 -genkey -out "$certificates_dir/private/${file_name}.pem"
+openssl ecparam -name secp384r1 -genkey -out "$certificates_dir/private/${fqdn}.pem"
 
 # Generate Certificate Signing Request (CSR).
 print_section_header "Generate Certificate Signing Request (CSR)"
-openssl req -new -sha384 -config "$certificates_dir/cert.cnf" -key "$certificates_dir/private/${file_name}.pem" -out "$certificates_dir/csr/${file_name}.pem"
+openssl req -new -sha384 -config "$certificates_dir/cert.cnf" -key "$certificates_dir/private/${fqdn}.pem" -out "$certificates_dir/csr/${fqdn}.pem"
 
 # Creating an extfile with all the alternative names
 print_section_header "Create an extfile with all the alternative names"
@@ -69,59 +68,59 @@ print_section_header "Create an extfile with all the alternative names"
   echo "extendedKeyUsage = serverAuth"
   echo "nsCertType = server"
   echo "nsComment = OpenSSL Generated Server Certificate"
-} >>"$certificates_dir/extfile/${file_name}.cnf"
+} >>"$certificates_dir/extfile/${fqdn}.cnf"
 
 # Generate Certificate.
 print_section_header "Generate Certificate"
-openssl ca -config "$certificates_dir/cert.cnf" -notext -batch -in "$certificates_dir/csr/${file_name}.pem" -out "$certificates_dir/certs/${file_name}.pem" -extfile "$certificates_dir/extfile/${file_name}.cnf"
+openssl ca -config "$certificates_dir/cert.cnf" -notext -batch -in "$certificates_dir/csr/${fqdn}.pem" -out "$certificates_dir/certs/${fqdn}.pem" -extfile "$certificates_dir/extfile/${fqdn}.cnf"
 
 # Create Certificate Chain Bundle.
 print_section_header "Create Certificate Chain Bundle"
-cat "$certificates_dir/certs/${file_name}.pem" "$intermediate_dir/certs/ca_chain_bundle.pem" >"$certificates_dir/certs/${file_name}_chain_bundle.pem"
+cat "$certificates_dir/certs/${fqdn}.pem" "$intermediate_dir/certs/ca_chain_bundle.pem" >"$certificates_dir/certs/${fqdn}_chain_bundle.pem"
 
 # Create Certificate Chain Bundle for HAProxy.
 print_section_header "Create Certificate Chain Bundle for HAProxy"
-cat "$certificates_dir/certs/${file_name}_chain_bundle.pem" "$certificates_dir/private/${file_name}.pem" >"$certificates_dir/certs/${file_name}_haproxy.pem"
-chmod 600 "$certificates_dir/certs/${file_name}_haproxy.pem"
+cat "$certificates_dir/certs/${fqdn}_chain_bundle.pem" "$certificates_dir/private/${fqdn}.pem" >"$certificates_dir/certs/${fqdn}_haproxy.pem"
+chmod 600 "$certificates_dir/certs/${fqdn}_haproxy.pem"
 
 # Verify Certificate against the Certificate Chain Bundle.
-print_section_header "Verify ${file_name} certificate against the ${file_name} certificate chain Bundle"
-openssl verify -CAfile "$certificates_dir/certs/${file_name}_chain_bundle.pem" "$certificates_dir/certs/${file_name}.pem"
+print_section_header "Verify ${fqdn} certificate against the ${fqdn} certificate chain Bundle"
+openssl verify -CAfile "$certificates_dir/certs/${fqdn}_chain_bundle.pem" "$certificates_dir/certs/${fqdn}.pem"
 
 # Verify Certificate against the Intermediate Certificate Authority Chain Bundle.
-print_section_header "Verify ${file_name} Certificate against the Intermediate Certificate Authority Chain Bundle"
-openssl verify -CAfile "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${file_name}.pem"
+print_section_header "Verify ${fqdn} Certificate against the Intermediate Certificate Authority Chain Bundle"
+openssl verify -CAfile "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${fqdn}.pem"
 
 # Verify Certificate Chain Bundle against the Intermediate Certificate Authority Chain Bundle.
-print_section_header "Verify ${file_name} Certificate Chain Bundle against the Intermediate Certificate Authority Chain Bundle"
-openssl verify -CAfile "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${file_name}_chain_bundle.pem"
+print_section_header "Verify ${fqdn} Certificate Chain Bundle against the Intermediate Certificate Authority Chain Bundle"
+openssl verify -CAfile "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${fqdn}_chain_bundle.pem"
 
 # Verify HAProxy Certificate Chain Bundle against the Intermediate Certificate Authority Chain Bundle.
 print_section_header "Verify HAProxy Certificate Chain Bundle against the Intermediate Certificate Authority Chain Bundle"
-openssl verify -CAfile "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${file_name}_haproxy.pem"
+openssl verify -CAfile "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${fqdn}_haproxy.pem"
 
 # Check Private Key.
 print_section_header "Check Private Key"
-openssl ecparam -in "$certificates_dir/private/${file_name}.pem" -text -noout
+openssl ecparam -in "$certificates_dir/private/${fqdn}.pem" -text -noout
 
 # Check Certificate Signing Request (CSR).
 print_section_header "Check Certificate Signing Request (CSR)"
-openssl req -text -noout -verify -in "$certificates_dir/csr/${file_name}.pem"
+openssl req -text -noout -verify -in "$certificates_dir/csr/${fqdn}.pem"
 
 # Check Certificate.
 print_section_header "Check Certificate"
-openssl x509 -in "$certificates_dir/certs/${file_name}.pem" -text -noout
+openssl x509 -in "$certificates_dir/certs/${fqdn}.pem" -text -noout
 
 # Check Certificate Chain Bundle.
 print_section_header "Check Certificate Chain Bundle"
-openssl x509 -in "$certificates_dir/certs/${file_name}_chain_bundle.pem" -text -noout
+openssl x509 -in "$certificates_dir/certs/${fqdn}_chain_bundle.pem" -text -noout
 
 # Convert Certificate from .pem to .crt and .key.
 print_section_header "Convert Certificate from ${fqdn}.pem to"
-cat "$certificates_dir/certs/${file_name}.pem" >"$certificates_dir/certs/${file_name}.crt"
-cat "$certificates_dir/certs/${file_name}_chain_bundle.pem" >"$certificates_dir/certs/${file_name}_chain_bundle.crt"
-cat "$certificates_dir/private/${file_name}.pem" >"$certificates_dir/private/${file_name}.key"
-chmod 600 "$certificates_dir/private/${file_name}.key"
+cat "$certificates_dir/certs/${fqdn}.pem" >"$certificates_dir/certs/${fqdn}.crt"
+cat "$certificates_dir/certs/${fqdn}_chain_bundle.pem" >"$certificates_dir/certs/${fqdn}_chain_bundle.crt"
+cat "$certificates_dir/private/${fqdn}.pem" >"$certificates_dir/private/${fqdn}.key"
+chmod 600 "$certificates_dir/private/${fqdn}.key"
 echo -e "$(print_cyan "--> ")""${fqdn}.crt"
 echo -e "$(print_cyan "--> ")""${fqdn}_chain_bundle.crt"
 echo -e "$(print_cyan "--> ")""${fqdn}.key"

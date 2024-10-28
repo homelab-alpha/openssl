@@ -2,8 +2,8 @@
 
 # Script Name: cert_ecdsa_server.sh
 # Author: GJS (homelab-alpha)
-# Date: 2024-06-09T09:16:36+02:00
-# Version: 1.0
+# Date: 2024-10-28T10:37:39+01:00
+# Version: 1.1.0
 
 # Description:
 # This script facilitates the creation of an ECDSA server certificate. It
@@ -34,7 +34,6 @@ print_section_header() {
 }
 
 # Prompt for Certificate information.
-read -r -p "$(print_cyan "Enter the name of the new certificate: ")" file_name
 read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
 read -r -p "$(print_cyan "Enter the IPv4 address of the new certificate (syntax: , IP:192.168.x.x): ")" ipv4
 
