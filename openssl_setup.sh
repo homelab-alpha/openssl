@@ -22,6 +22,14 @@
 # - Ensure OpenSSL is installed on your system.
 # - The script creates directories and files under $HOME/ssl.
 
+# Function to check if OpenSSL is installed
+check_openssl_installed() {
+  if ! command -v openssl &> /dev/null; then
+    echo "Error: OpenSSL is not installed. Please install it before running this script."
+    exit 1 # Stop the script with an error code
+  fi
+}
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it
