@@ -30,6 +30,8 @@ check_openssl_installed() {
   fi
 }
 
+check_openssl_installed
+
 # Function to print text in cyan color
 print_cyan() {
   echo -e "\e[36m$1\e[0m" # \e[36m sets text color to cyan, \e[0m resets it
