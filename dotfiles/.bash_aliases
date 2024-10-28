@@ -1,8 +1,8 @@
 # Define directory paths.
-openssl_dir="$HOME/openssl/"
-certificate_authority_dir="$openssl_dir/certificate-authority"
-intermediate_certificate_authority_dir="$openssl_dir/intermediate-certificate-authority"
-certificate_dir="$openssl_dir/certificate"
+openssl_dir="$HOME/openssl"
+certificate_authority_dir="$HOME/openssl/certificate-authority"
+intermediate_certificate_authority_dir="$HOME/openssl/intermediate-certificate-authority"
+certificate_dir="$HOME/openssl/certificate"
 
 alias new-ssl-setup="$openssl_dir/openssl_setup.sh"
 alias openssl-verify="$openssl_dir/openssl_verify_certificates.sh"
