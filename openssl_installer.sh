@@ -2,8 +2,8 @@
 
 # Script Name: openssl_installer.sh
 # Author: GJS (homelab-aplha)
-# Date: 2024-06-05T08:42:08+02:00
-# Version: 1.0.1
+# Date: 2024-10-29T08:44:08+01:00
+# Version: 1.1.1
 
 # Description:
 # This script adds specified content to the ~/.bashrc file, avoiding duplication.
@@ -37,6 +37,8 @@ if ! grep -qF "if [ -f $ALIASES_PATH ]; then" "$BASHRC_PATH"; then
         echo ""
     } >>"$BASHRC_PATH"
 fi
+
+rm -rf "$HOME/openssl/.git" "$HOME/openssl/.github" "$HOME/openssl/.gitignore"
 
 echo "Installation completed. .bashrc has been updated and the shell has been restarted."
 
