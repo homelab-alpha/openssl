@@ -2,8 +2,8 @@
 
 # Script Name: ssl_directory_setup.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T12:08:42+01:00
-# Version: 2.0.0
+# Date: 2025-02-16T14:54:41+01:00
+# Version: 2.1.0
 
 # Description:
 # This script sets up a directory structure for SSL certificate management, generates
@@ -61,11 +61,19 @@ mkdir -p "$root_dir"/{certs,crl,csr,db,newcerts,private} \
   "$tsa_dir"/{cacerts,db,private,tsacerts} \
   "$crl_backup_dir"
 
-# Create DataBase files.
-print_section_header "Create DataBase files"
+# Create db files and set unique_subject attribute.
+print_section_header "Create db files and set unique_subject attribute"
+
+# Create index.txt files in each directory.
 touch "$root_dir/db/index.txt"
 touch "$intermediate_dir/db/index.txt"
 touch "$tsa_dir/db/index.txt"
+
+# Set unique_subject attribute in each index.txt.attr file.
+for dir in "$root_dir/db" "$intermediate_dir/db" "$tsa_dir/db"; do
+  touch "$dir/index.txt.attr"
+  echo "unique_subject = yes" >"$dir/index.txt.attr"
+done
 
 # Renew db numbers (serial and CRL) in one loop.
 print_section_header "Renew db numbers (serial and CRL)"
