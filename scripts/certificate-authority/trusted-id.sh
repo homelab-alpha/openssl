@@ -2,8 +2,8 @@
 
 # Script Name: trusted-id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T12:08:42+01:00
-# Version: 2.0.0
+# Date: 2025-02-16T14:59:04+01:00
+# Version: 2.1.0
 
 # Description:
 # This script generates and manages a trusted root certificate. It sets up
@@ -55,20 +55,37 @@ for type in "serial" "crlnumber"; do
   done
 done
 
-# Check if unique_subject is enabled and if CN exists
+# Check if unique_subject is enabled and if trusted-id.pem exists
 unique_subject="no"
 if grep -q "^unique_subject\s*=\s*yes" "$root_dir/db/index.txt.attr" 2>/dev/null; then
   unique_subject="yes"
 fi
 
-cn_exists=false
-if grep -q "CN=HATS Root X1" "$root_dir/db/index.txt" 2>/dev/null; then
-  cn_exists=true
+trusted_id_path="$root_dir/certs/trusted-id.pem"
+trusted_id_exists=false
+if [[ -f "$trusted_id_path" ]]; then
+  trusted_id_exists=true
 fi
 
-if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
-  echo "[ERROR] unique_subject is enabled and CSR with Common Name HATS Root X1 already exists in index.txt" >&2
+# If unique_subject is enabled and Trusted ID exists, display an error and exit
+if [[ "$unique_subject" == "yes" && "$trusted_id_exists" == "true" ]]; then
+  echo "[ERROR] unique_subject is enabled and Trusted ID already exists." >&2
   exit 1
+fi
+
+# If unique_subject is "no", warn and ask for confirmation
+if [[ "$unique_subject" == "no" && -f "$trusted_id_path" ]]; then
+  print_section_header "⚠️  WARNING: Overwriting Trusted ID"
+
+  echo "[WARNING] Trusted ID already exists and will be OVERWRITTEN!" >&2
+  echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
+  echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
+
+  read -p "Do you want to continue? (yes/no): " confirm
+  if [[ "$confirm" != "yes" ]]; then
+    echo "[INFO] Operation aborted by user." >&2
+    exit 1
+  fi
 fi
 
 # Generate ECDSA key for Trusted ID

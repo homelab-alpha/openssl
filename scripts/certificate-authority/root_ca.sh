@@ -2,8 +2,8 @@
 
 # Script Name: root_ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T12:08:42+01:00
-# Version: 2.0.0
+# Date: 2025-02-16T15:01:25+01:00
+# Version: 2.1.0
 
 # Description:
 # This script sets up and manages a Root Certificate Authority (CA). It defines
@@ -67,9 +67,25 @@ if grep -q "CN=HA Root X1" "$root_dir/db/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
+# If unique_subject is enabled and CN exists, display an error and exit
 if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
   echo "[ERROR] unique_subject is enabled and CSR with Common Name HA Root X1 already exists in index.txt" >&2
   exit 1
+fi
+
+# If unique_subject is "no", warn and ask for confirmation
+if [[ "$unique_subject" == "no" ]]; then
+  print_section_header "⚠️  WARNING: Overwriting Root CA"
+
+  echo "[WARNING] Root CA already exists and will be OVERWRITTEN!" >&2
+  echo "[WARNING] This action will require REGENERATING ALL SUB-CA CERTIFICATES AND ALL ISSUED CERTIFICATES!" >&2
+  echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
+
+  read -p "Do you want to continue? (yes/no): " confirm
+  if [[ "$confirm" != "yes" ]]; then
+    echo "[INFO] Operation aborted by user." >&2
+    exit 1
+  fi
 fi
 
 # Generate ECDSA key for Root CA
