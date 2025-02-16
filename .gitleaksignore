@@ -1,0 +1,15 @@
+# GitHub Workspace
+/github/workspace/examples/ssl-directory-structure/intermediate/private/ca.pem:private-key:4
+/github/workspace/examples/ssl-directory-structure/certificates/certs/localhost_haproxy.pem:private-key:32
+/github/workspace/examples/ssl-directory-structure/root/private/root_ca.pem:private-key:4
+/github/workspace/examples/ssl-directory-structure/certificates/private/localhost.key:private-key:4
+/github/workspace/examples/ssl-directory-structure/root/private/trusted-id.pem:private-key:4
+/github/workspace/examples/ssl-directory-structure/certificates/private/localhost.pem:private-key:4
+
+# Super Linter Local
+/tmp/lint/examples/ssl-directory-structure/intermediate/private/ca.pem:private-key:4
+/tmp/lint/examples/ssl-directory-structure/certificates/certs/localhost_haproxy.pem:private-key:32
+/tmp/lint/examples/ssl-directory-structure/root/private/root_ca.pem:private-key:4
+/tmp/lint/examples/ssl-directory-structure/certificates/private/localhost.key:private-key:4
+/tmp/lint/examples/ssl-directory-structure/root/private/trusted-id.pem:private-key:4
+/tmp/lint/examples/ssl-directory-structure/certificates/private/localhost.pem:private-key:4
