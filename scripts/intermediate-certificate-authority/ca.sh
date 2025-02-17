@@ -2,8 +2,8 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T15:05:41+01:00
-# Version: 2.1.0
+# Date: 2025-02-17T12:38:00+01:00
+# Version: 2.1.1
 
 # Description:
 # This script facilitates the setup and management of an Intermediate Certificate
@@ -51,7 +51,7 @@ tsa_dir="$ssl_dir/tsa"
 # Renew db numbers (serial and CRL)
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$root_dir/db" "$intermediate_dir/db" "$tsa_dir/db"; do
+  for dir in "$intermediate_dir/db" "$tsa_dir/db"; do
     generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
   done
 done
