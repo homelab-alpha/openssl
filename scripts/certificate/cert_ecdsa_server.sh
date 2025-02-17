@@ -64,12 +64,12 @@ done
 
 # Check if unique_subject is enabled and if CN exists
 unique_subject="no"
-if grep -q "^unique_subject\s*=\s*yes" "$certificates/db/index.txt.attr" 2>/dev/null; then
+if grep -q "^unique_subject\s*=\s*yes" "certificates_dir/db/index.txt.attr" 2>/dev/null; then
   unique_subject="yes"
 fi
 
 cn_exists=false
-if grep -q "CN=${fqdn}" "$certificates/db/index.txt" 2>/dev/null; then
+if grep -q "CN=${fqdn}" "certificates_dir/db/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
