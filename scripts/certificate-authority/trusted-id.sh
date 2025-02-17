@@ -2,8 +2,8 @@
 
 # Script Name: trusted-id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T14:59:04+01:00
-# Version: 2.1.0
+# Date: 2025-02-17T12:38:00+01:00
+# Version: 2.1.1
 
 # Description:
 # This script generates and manages a trusted root certificate. It sets up
@@ -44,13 +44,12 @@ check_success() {
 print_section_header "Define directory paths"
 ssl_dir="$HOME/ssl"
 root_dir="$ssl_dir/root"
-intermediate_dir="$ssl_dir/intermediate"
 tsa_dir="$ssl_dir/tsa"
 
 # Renew db numbers (serial and CRL)
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$root_dir/db" "$intermediate_dir/db" "$tsa_dir/db"; do
+  for dir in "$root_dir/db" "$tsa_dir/db"; do
     generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
   done
 done

@@ -2,8 +2,8 @@
 
 # Script Name: cert_rsa_client.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T12:08:42+01:00
-# Version: 2.0.0
+# Date: 2025-02-17T12:38:00+01:00
+# Version: 2.1.1
 
 # Description:
 # This script facilitates the creation of an RSA client certificate. It
@@ -49,7 +49,6 @@ read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
 # Define directory paths
 print_section_header "Define directory paths"
 ssl_dir="$HOME/ssl"
-root_dir="$ssl_dir/root"
 intermediate_dir="$ssl_dir/intermediate"
 certificates_dir="$ssl_dir/certificates"
 tsa_dir="$ssl_dir/tsa"
@@ -57,7 +56,7 @@ tsa_dir="$ssl_dir/tsa"
 # Renew db numbers (serial and CRL)
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$root_dir/db" "$intermediate_dir/db" "$tsa_dir/db"; do
+  for dir in "$certificates_dir/db" "$tsa_dir/db"; do
     generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
   done
 done
