@@ -2,8 +2,8 @@
 
 # Script Name: ssl_directory_setup.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T14:54:41+01:00
-# Version: 2.1.0
+# Date: 2025-02-17T08:56:25+01:00
+# Version: 2.2.0
 
 # Description:
 # This script sets up a directory structure for SSL certificate management, generates
@@ -57,7 +57,7 @@ crl_backup_dir="$ssl_dir/crl-backups"
 print_section_header "Create directory structure"
 mkdir -p "$root_dir"/{certs,crl,csr,db,newcerts,private} \
   "$intermediate_dir"/{certs,crl,csr,db,newcerts,private} \
-  "$certificates_dir"/{certs,csr,extfile,private} \
+  "$certificates_dir"/{certs,crl,csr,db,extfile,newcerts,private} \
   "$tsa_dir"/{cacerts,db,private,tsacerts} \
   "$crl_backup_dir"
 
@@ -67,10 +67,11 @@ print_section_header "Create db files and set unique_subject attribute"
 # Create index.txt files in each directory.
 touch "$root_dir/db/index.txt"
 touch "$intermediate_dir/db/index.txt"
+touch "$certificates_dir/db/index.txt"
 touch "$tsa_dir/db/index.txt"
 
 # Set unique_subject attribute in each index.txt.attr file.
-for dir in "$root_dir/db" "$intermediate_dir/db" "$tsa_dir/db"; do
+for dir in "$root_dir/db" "$intermediate_dir/db" "$certificates_dir/db" "$tsa_dir/db"; do
   touch "$dir/index.txt.attr"
   echo "unique_subject = yes" >"$dir/index.txt.attr"
 done
@@ -78,7 +79,7 @@ done
 # Renew db numbers (serial and CRL) in one loop.
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$root_dir/db" "$intermediate_dir/db" "$tsa_dir/db"; do
+  for dir in "$root_dir/db" "$intermediate_dir/db" "$certificates_dir/db" "$tsa_dir/db"; do
     generate_random_hex >"$dir/$type"
   done
 done
@@ -1345,15 +1346,15 @@ default_ca = CA_default   # The default ca section
 ####################################################################
 [ CA_default ]
 
-certs = $HOME/ssl/intermediate/certs   # Where the issued certs are kept
-crl_dir = $HOME/ssl/intermediate/crl   # Where the issued crl are kept
-database = $HOME/ssl/intermediate/db/index.txt   # database index file.
+certs = $HOME/ssl/certificates/certs   # Where the issued certs are kept
+crl_dir = $HOME/ssl/certificates/crl   # Where the issued crl are kept
+database = $HOME/ssl/certificates/db/index.txt   # database index file.
 unique_subject = yes   # Set to 'no' to allow creation of several certs with same subject.
-new_certs_dir = $HOME/ssl/intermediate/newcerts   # default place for new certs.
+new_certs_dir = $HOME/ssl/certificates/newcerts   # default place for new certs.
 
 certificate = $HOME/ssl/intermediate/certs/ca.pem 	# The CA certificate
-serial = $HOME/ssl/intermediate/db/serial   # The current serial number
-crlnumber = $HOME/ssl/intermediate/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
+serial = $HOME/ssl/certificates/db/serial   # The current serial number
+crlnumber = $HOME/ssl/certificates/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
 crl = $HOME/ssl/intermediate/crl/ca.pem   # The current CRL
 private_key = $HOME/ssl/intermediate/private/ca.pem   # The private key
 
