@@ -57,7 +57,7 @@ crl_backup_dir="$ssl_dir/crl-backups"
 print_section_header "Create directory structure"
 mkdir -p "$root_dir"/{certs,crl,csr,db,newcerts,private} \
   "$intermediate_dir"/{certs,crl,csr,db,newcerts,private} \
-  "$certificates_dir"/{certs,crl,csr,db,newcerts,private} \
+  "$certificates_dir"/{certs,crl,csr,db,extfile,newcerts,private} \
   "$tsa_dir"/{cacerts,db,private,tsacerts} \
   "$crl_backup_dir"
 
