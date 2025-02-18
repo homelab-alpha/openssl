@@ -2,17 +2,15 @@
 
 # Script Name: cert_ecdsa_localhost.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-17T12:38:00+01:00
-# Version: 2.1.1
+# Date: 2025-02-18T17:31:25+01:00
+# Version: 2.5.0
 
 # Description:
-# This script is designed to generate an ECDSA certificate specifically for a
-# localhost server. It automates the entire certificate creation process,
-# including generating a private key, creating a Certificate Signing Request (CSR),
-# issuing the final certificate, and bundling it with an intermediate Certificate
-# Authority (CA) chain. Additionally, it sets up a certificate bundle for HAProxy,
-# performs various verification checks, and converts the certificate to different
-# formats for compatibility with various applications.
+# This script automates the generation of an ECDSA certificate for a
+# localhost server. It creates a private key, generates a CSR, issues
+# the certificate, bundles it with an intermediate CA chain, and sets
+# up a certificate bundle for HAProxy. The script also converts the
+# certificate to various formats and performs necessary verification.
 
 # Usage: ./cert_ecdsa_localhost.sh
 
@@ -49,27 +47,35 @@ ipv4=", IP:127.0.0.1"
 
 # Define directory paths
 print_section_header "Define directory paths"
-ssl_dir="$HOME/ssl"
-intermediate_dir="$ssl_dir/intermediate"
-certificates_dir="$ssl_dir/certificates"
-tsa_dir="$ssl_dir/tsa"
+base_dir="$HOME/ssl"
+certs_dir="$base_dir/certs"
+csr_dir="$base_dir/csr"
+extfile_dir="$base_dir/extfiles"
+private_dir="$base_dir/private"
+db_dir="$base_dir/db"
+openssl_conf_dir="$base_dir/openssl.cnf"
+
+# Set directories for various components
+certs_intermediate_dir="$certs_dir/intermediate"
+certs_certificates_dir="$certs_dir/certificates"
+private_certificates_dir="$private_dir/certificates"
 
 # Renew db numbers (serial and CRL)
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$certificates_dir/db" "$tsa_dir/db"; do
+  for dir in $db_dir; do
     generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
   done
 done
 
 # Check if unique_subject is enabled and if CN exists
 unique_subject="no"
-if grep -q "^unique_subject\s*=\s*yes" "$certificates_dir/db/index.txt.attr" 2>/dev/null; then
+if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; then
   unique_subject="yes"
 fi
 
 cn_exists=false
-if grep -q "CN=${fqdn}" "$certificates_dir/db/index.txt" 2>/dev/null; then
+if grep -q "CN=${fqdn}" "$db_dir/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
@@ -80,12 +86,12 @@ fi
 
 # Generate ECDSA key
 print_section_header "Generate ECDSA key"
-openssl ecparam -name secp384r1 -genkey -out "$certificates_dir/private/${fqdn}.pem"
+openssl ecparam -name secp384r1 -genkey -out "$private_certificates_dir/${fqdn}.pem"
 check_success "Failed to generate ECDSA key"
 
 # Generate Certificate Signing Request (CSR)
 print_section_header "Generate Certificate Signing Request (CSR)"
-openssl req -new -sha384 -config "$certificates_dir/cert.cnf" -key "$certificates_dir/private/${fqdn}.pem" -out "$certificates_dir/csr/${fqdn}.pem"
+openssl req -new -sha384 -config "$openssl_conf_dir/cert.cnf" -key "$private_certificates_dir/${fqdn}.pem" -out "$csr_dir/${fqdn}.pem"
 check_success "Failed to generate CSR"
 
 # Create an extfile with all the alternative names
@@ -97,22 +103,22 @@ print_section_header "Create an extfile with all the alternative names"
   echo "extendedKeyUsage = serverAuth"
   echo "nsCertType = server"
   echo "nsComment = OpenSSL Generated Server Certificate"
-} >"$certificates_dir/extfile/${fqdn}.cnf"
+} >"$extfile_dir/${fqdn}.cnf"
 
 # Generate Certificate
 print_section_header "Generate Certificate"
-openssl ca -config "$certificates_dir/cert.cnf" -notext -batch -in "$certificates_dir/csr/${fqdn}.pem" -out "$certificates_dir/certs/${fqdn}.pem" -extfile "$certificates_dir/extfile/${fqdn}.cnf"
+openssl ca -config "$openssl_conf_dir/cert.cnf" -notext -batch -in "$csr_dir/${fqdn}.pem" -out "$certs_certificates_dir/${fqdn}.pem" -extfile "$extfile_dir/${fqdn}.cnf"
 check_success "Failed to generate certificate"
 
 # Create Certificate Chain Bundle
 print_section_header "Create Certificate Chain Bundle"
-cat "$certificates_dir/certs/${fqdn}.pem" "$intermediate_dir/certs/ca_chain_bundle.pem" >"$certificates_dir/certs/${fqdn}_chain_bundle.pem"
+cat "$certs_certificates_dir/${fqdn}.pem" "$certs_intermediate_dir/ca_chain_bundle.pem" >"$certs_certificates_dir/${fqdn}_chain_bundle.pem"
 check_success "Failed to create certificate chain bundle"
 
 # Create Certificate Chain Bundle for HAProxy
 print_section_header "Create Certificate Chain Bundle for HAProxy"
-cat "$certificates_dir/certs/${fqdn}_chain_bundle.pem" "$certificates_dir/private/${fqdn}.pem" >"$certificates_dir/certs/${fqdn}_haproxy.pem"
-chmod 600 "$certificates_dir/certs/${fqdn}_haproxy.pem"
+cat "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$private_certificates_dir/${fqdn}.pem" >"$certs_certificates_dir/${fqdn}_haproxy.pem"
+chmod 600 "$certs_certificates_dir/${fqdn}_haproxy.pem"
 check_success "Failed to create HAProxy certificate bundle"
 
 # Function to verify certificates
@@ -123,20 +129,24 @@ verify_certificate() {
 
 # Perform certificate verifications
 print_section_header "Verify Certificates"
-verify_certificate "$certificates_dir/certs/${fqdn}_chain_bundle.pem" "$certificates_dir/certs/${fqdn}.pem"
-verify_certificate "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${fqdn}.pem"
-verify_certificate "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${fqdn}_chain_bundle.pem"
-verify_certificate "$intermediate_dir/certs/ca_chain_bundle.pem" "$certificates_dir/certs/${fqdn}_haproxy.pem"
+verify_certificate "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
+verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
+verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.pem"
+verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_haproxy.pem"
 
 # Convert Certificate from .pem to .crt and .key
 print_section_header "Convert Certificate Formats"
-cp "$certificates_dir/certs/${fqdn}.pem" "$certificates_dir/certs/${fqdn}.crt"
-cp "$certificates_dir/certs/${fqdn}_chain_bundle.pem" "$certificates_dir/certs/${fqdn}_chain_bundle.crt"
-cp "$certificates_dir/private/${fqdn}.pem" "$certificates_dir/private/${fqdn}.key"
-chmod 600 "$certificates_dir/private/${fqdn}.key"
+cp "$certs_certificates_dir/${fqdn}.pem" "$certs_certificates_dir/${fqdn}.crt"
+cp "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.crt"
+cp "$private_certificates_dir/${fqdn}.pem" "$private_certificates_dir/${fqdn}.key"
+chmod 600 "$private_certificates_dir/${fqdn}.key"
 
 print_cyan "--> ${fqdn}.crt"
 print_cyan "--> ${fqdn}_chain_bundle.crt"
 print_cyan "--> ${fqdn}.key"
+
+# Script completion message
+echo
+print_cyan "Certificate process completed successfully."
 
 exit 0
