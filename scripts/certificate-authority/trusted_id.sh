@@ -1,17 +1,24 @@
 #!/bin/bash
 
-# Script Name: trusted-id.sh
+# Script Name: trusted_id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-17T12:38:00+01:00
-# Version: 2.1.1
+# Date: 2025-02-18T17:31:25+01:00
+# Version: 2.5.0
 
 # Description:
-# This script generates and manages a trusted root certificate. It sets up
-# directory paths, renews database serial numbers, generates an ECDSA key,
-# creates a self-signed certificate, verifies the certificate, checks the
-# private key, and converts the certificate format.
+# This script generates and manages a trusted root certificate for a
+# Certificate Authority. It sets up necessary directory paths, renews
+# database serial numbers, generates an ECDSA key, creates a self-signed
+# certificate, verifies the certificate, checks the private key, and
+# converts the certificate to different formats.
 
-# Usage: ./trusted-id.sh
+# Usage: ./trusted_id.sh
+
+# Notes:
+# - Ensure you have the correct directory structure for certs and private keys.
+# - Unique subject may cause issues if the Trusted ID already exists.
+# - Overwriting the Trusted ID will require regeneration of the Root CA
+#   and all issued certificates.
 
 # Stop script on error
 set -e
@@ -42,25 +49,31 @@ check_success() {
 
 # Define directory paths
 print_section_header "Define directory paths"
-ssl_dir="$HOME/ssl"
-root_dir="$ssl_dir/root"
-tsa_dir="$ssl_dir/tsa"
+base_dir="$HOME/ssl"
+certs_dir="$base_dir/certs"
+private_dir="$base_dir/private"
+db_dir="$base_dir/db"
+openssl_conf_dir="$base_dir/openssl.cnf"
+
+# Set directories for various components
+certs_root_dir="$certs_dir/root"
+private_root_dir="$private_dir/root"
 
 # Renew db numbers (serial and CRL)
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$root_dir/db" "$tsa_dir/db"; do
+  for dir in $db_dir; do
     generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
   done
 done
 
-# Check if unique_subject is enabled and if trusted-id.pem exists
+# Check if unique_subject is enabled and if trusted_id.pem exists
 unique_subject="no"
-if grep -q "^unique_subject\s*=\s*yes" "$root_dir/db/index.txt.attr" 2>/dev/null; then
+if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; then
   unique_subject="yes"
 fi
 
-trusted_id_path="$root_dir/certs/trusted-id.pem"
+trusted_id_path="$certs_root_dir/trusted_id.pem"
 trusted_id_exists=false
 if [[ -f "$trusted_id_path" ]]; then
   trusted_id_exists=true
@@ -80,7 +93,7 @@ if [[ "$unique_subject" == "no" && -f "$trusted_id_path" ]]; then
   echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
   echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
 
-  read -p "Do you want to continue? (yes/no): " confirm
+  read -p -r "Do you want to continue? (yes/no): " confirm
   if [[ "$confirm" != "yes" ]]; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
@@ -89,34 +102,38 @@ fi
 
 # Generate ECDSA key for Trusted ID
 print_section_header "Generate ECDSA key for Trusted ID"
-openssl ecparam -name secp384r1 -genkey -out "$root_dir/private/trusted-id.pem"
+openssl ecparam -name secp384r1 -genkey -out "$private_root_dir/trusted_id.pem"
 check_success "Failed to generate ECDSA key"
 
 # Generate Certificate Signing Request (CSR) for Trusted ID
 print_section_header "Generate Certificate Signing Request (CSR) for Trusted ID"
-openssl req -new -x509 -sha384 -config "$root_dir/trusted-id.cnf" -extensions v3_ca -key "$root_dir/private/trusted-id.pem" -days 10956 -out "$root_dir/certs/trusted-id.pem"
+openssl req -new -x509 -sha384 -config "$openssl_conf_dir/trusted_id.cnf" -extensions v3_ca -key "$private_root_dir/trusted_id.pem" -days 10956 -out "$certs_root_dir/trusted_id.pem"
 check_success "Failed to generate certificate"
 
 # Verify Certificate against itself.
 print_section_header "Verify Certificate against itself"
-openssl verify -CAfile "$root_dir/certs/trusted-id.pem" "$root_dir/certs/trusted-id.pem"
+openssl verify -CAfile "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.pem"
 check_success "Verification failed for certificate"
 
 # Check Private Key.
 print_section_header "Check Private Key"
-openssl ecparam -in "$root_dir/private/trusted-id.pem" -text -noout
+openssl ecparam -in "$private_root_dir/trusted_id.pem" -text -noout
 check_success "Failed to check private key"
 
 # Check Certificate.
 print_section_header "Check Certificate"
-openssl x509 -in "$root_dir/certs/trusted-id.pem" -text -noout
+openssl x509 -in "$certs_root_dir/trusted_id.pem" -text -noout
 check_success "Failed to check certificate"
 
 # Convert Certificate from .pem to .crt.
-print_section_header "Convert from trusted-id.pem to trusted-id.crt"
-cp "$root_dir/certs/trusted-id.pem" "$root_dir/certs/trusted-id.crt"
+print_section_header "Convert from trusted_id.pem to trusted_id.crt"
+cp "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.crt"
 check_success "Failed to convert certificate"
 
-print_cyan "--> trusted-id.crt"
+print_cyan "--> trusted_id.crt"
+
+# Script completion message
+echo
+print_cyan "Certificate Authority process completed successfully."
 
 exit 0
