@@ -7,7 +7,7 @@ certificate_dir="$openssl_script_dir/certificate"
 alias new-ssl-directorie-setup="$openssl_script_dir/ssl_directory_setup.sh"
 alias openssl-verify="$openssl_script_dir/verify_ssl_certificates.sh"
 
-alias new-trusted-id="$certificate_authority_dir/trusted-id.sh"
+alias new-trusted-id="$certificate_authority_dir/trusted_id.sh"
 alias new-root-ca="$certificate_authority_dir/root_ca.sh"
 
 alias new-ca="$intermediate_certificate_authority_dir/ca.sh"
