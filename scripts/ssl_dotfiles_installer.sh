@@ -2,21 +2,24 @@
 
 # Script Name: ssl_dotfiles_installer.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-16T07:24:43+01:00
-# Version: 2.0.0
+# Date: 2025-02-18T17:31:25+01:00
+# Version: 2.5.0
 
 # Description:
-# This script adds specified content to the ~/.bashrc file, avoiding duplication.
-# It checks if ~/.bashrc exists and appends the content to the end if it doesn't already exist.
+# This script updates ~/.bashrc by adding necessary content if not already
+# present. It avoids duplication by checking for existing entries and only
+# appends the content if it's missing.
 
 # Usage:
-# Options and arguments:
-# - No options or arguments required.
-# - Run the script to add specified content to ~/.bashrc.
+# No options or arguments required.
+# Run the script to append content to ~/.bashrc and remove specific files
+# in the OpenSSL directory.
 
 # Notes:
-# - Ensure that the content to be added is properly formatted and won't cause conflicts with existing aliases.
-# - This script assumes that the user has a specific directory structure and file (~/openssl/dotfiles/.bash_aliases) for aliases.
+# - Ensure the content to be added is properly formatted to avoid conflicts
+#   with existing aliases.
+# - The script assumes the user has a specific directory structure with
+#   the file ~/openssl/dotfiles/.bash_aliases for aliases.
 
 # Main Program:
 

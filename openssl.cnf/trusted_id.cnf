@@ -78,17 +78,17 @@ default_ca = CA_default   # The default ca section
 ####################################################################
 [ CA_default ]
 
-certs = $HOME/ssl/certs/certificates   # Where the issued certs are kept
+certs = $HOME/ssl/certs/root   # Where the issued certs are kept
 crl_dir = $HOME/ssl/crl   # Where the issued crl are kept
 database = $HOME/ssl/db/index.txt   # database index file.
 unique_subject = yes   # Set to 'no' to allow creation of several certs with same subject.
 new_certs_dir = $HOME/ssl/newcerts   # default place for new certs.
 
-certificate = $HOME/ssl/certs/intermediate/ca.pem 	# The CA certificate
+certificate = $HOME/ssl/certs/root/trusted_id.pem 	# The CA certificate
 serial = $HOME/ssl/db/serial   # The current serial number
 crlnumber = $HOME/ssl/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
-crl = $HOME/ssl/crl/ca_crl.pem   # The current CRL
-private_key = $HOME/ssl/private/intermediate/ca.pem   # The private key
+crl = $HOME/ssl/crl/trusted_id_crl.pem   # The current CRL
+private_key = $HOME/ssl/private/root/trusted_id.pem   # The private key
 
 x509_extensions = usr_cert   # The extensions to add to the cert
 
@@ -104,8 +104,8 @@ cert_opt = ca_default   # Certificate field options
 # crlnumber must also be commented out to leave a V1 CRL.
 # crl_extensions = crl_ext
 
-default_days = 366   # how long to certify for
-default_crl_days = 30   # how long before next CRL
+default_days = 10956   # how long to certify for
+default_crl_days = 365   # how long before next CRL
 default_md = sha384  # use public key default MD
 preserve = yes   # keep passed DN ordering
 
@@ -116,7 +116,7 @@ policy = policy_match
 
 # For the CA policy
 [ policy_match ]
-countryName = optional
+countryName = match
 stateOrProvinceName = optional
 organizationName = optional
 organizationalUnitName = optional
@@ -159,10 +159,10 @@ string_mask = utf8only
 # req_extensions = v3_req   # The extensions to add to a certificate request
 
 [ req_distinguished_name ]
-# countryName = Country Name (2 letter code)
-# countryName_default = NL
-# countryName_min = 2
-# countryName_max = 2
+countryName = Country Name (2 letter code)
+countryName_default = NL
+countryName_min = 2
+countryName_max = 2
 
 # stateOrProvinceName = State or Province Name (full name)
 # stateOrProvinceName_default	= Some-State
@@ -170,8 +170,8 @@ string_mask = utf8only
 # localityName = Locality Name (eg, city)
 # localityName_default = Some-City
 
-# 0.organizationName = Organization Name (eg, company)
-# 0.organizationName_default = Homelab-Alpha
+0.organizationName = Organization Name (eg, company)
+0.organizationName_default = Homelab-Alpha Trusted Services
 
 # we can do this but it is not needed normally :-)
 # 1.organizationName = Second Organization Name (eg, company)
@@ -181,7 +181,7 @@ string_mask = utf8only
 # organizationalUnitName_default = Some-Unitname
 
 commonName = Common Name (e.g. server FQDN or YOUR name)
-commonName_default =
+commonName_default = HATS Root X1
 commonName_max = 64
 
 # emailAddress = Email Address
