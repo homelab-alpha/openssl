@@ -2,15 +2,16 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-17T12:38:00+01:00
-# Version: 2.1.1
+# Date: 2025-02-18T17:31:25+01:00
+# Version: 2.5.0
 
 # Description:
-# This script facilitates the setup and management of an Intermediate Certificate
-# Authority (CA). It automates the process of generating ECDSA keys, creating
-# a Certificate Signing Request (CSR), issuing the intermediate CA certificate,
-# creating the CA chain bundle, and verifying the integrity of the certificates.
-# It also provides conversion for HAProxy compatibility and supports certificate format conversion.
+# This script automates the process of setting up and managing an
+# Intermediate Certificate Authority (CA). It generates ECDSA keys,
+# creates a Certificate Signing Request (CSR), issues the Intermediate
+# CA certificate, creates the CA chain bundle, and verifies the
+# integrity of the certificates. It also supports certificate format
+# conversion and conversion for HAProxy compatibility.
 
 # Usage: ./ca.sh
 
@@ -43,44 +44,53 @@ check_success() {
 
 # Define directory paths
 print_section_header "Define directory paths"
-ssl_dir="$HOME/ssl"
-root_dir="$ssl_dir/root"
-intermediate_dir="$ssl_dir/intermediate"
-tsa_dir="$ssl_dir/tsa"
+base_dir="$HOME/ssl"
+certs_dir="$base_dir/certs"
+csr_dir="$base_dir/csr"
+private_dir="$base_dir/private"
+db_dir="$base_dir/db"
+openssl_conf_dir="$base_dir/openssl.cnf"
+
+# Set directories for various components
+certs_root_dir="$certs_dir/root"
+certs_intermediate_dir="$certs_dir/intermediate"
+private_intermediate_dir="$private_dir/intermediate"
 
 # Renew db numbers (serial and CRL)
 print_section_header "Renew db numbers (serial and CRL)"
 for type in "serial" "crlnumber"; do
-  for dir in "$intermediate_dir/db" "$tsa_dir/db"; do
+  for dir in $db_dir; do
     generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
   done
 done
 
-# Check if unique_subject is enabled and if CN exists
+# Check if unique_subject is enabled and if trusted_id.pem exists
 unique_subject="no"
-if grep -q "^unique_subject\s*=\s*yes" "$intermediate_dir/db/index.txt.attr" 2>/dev/null; then
+if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; then
   unique_subject="yes"
 fi
 
-cn_exists=false
-if grep -q "CN=HA" "$intermediate_dir/db/index.txt" 2>/dev/null; then
-  cn_exists=true
+ca_path="$certs_intermediate_dir/ca.pem"
+trusted_id_exists=false
+if [[ -f "$ca_path" ]]; then
+  trusted_id_exists=true
 fi
 
-if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
-  echo "[ERROR] unique_subject is enabled and CSR with Common Name HA already exists in index.txt" >&2
+# If unique_subject is enabled and Intermediate Certificate Authority exists, display an error and exit
+if [[ "$unique_subject" == "yes" && "$trusted_id_exists" == "true" ]]; then
+  echo "[ERROR] unique_subject is enabled and Intermediate Certificate Authority already exists." >&2
   exit 1
 fi
 
 # If unique_subject is "no", warn and ask for confirmation
-if [[ "$unique_subject" == "no" ]]; then
-  print_section_header "⚠️  WARNING: Overwriting SUB CA"
+if [[ "$unique_subject" == "no" && -f "$ca_path" ]]; then
+  print_section_header "⚠️  WARNING: Overwriting Intermediate Certificate Authority"
 
-  echo "[WARNING] SUB CA already exists and will be OVERWRITTEN!" >&2
-  echo "[WARNING] This action will require REGENERATING ALL ISSUED CERTIFICATES!" >&2
+  echo "[WARNING] Intermediate Certificate Authority already exists and will be OVERWRITTEN!" >&2
+  echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
   echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
 
-  read -p "Do you want to continue? (yes/no): " confirm
+  read -p -r "Do you want to continue? (yes/no): " confirm
   if [[ "$confirm" != "yes" ]]; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
@@ -89,22 +99,22 @@ fi
 
 # Generate ECDSA key for Intermediate CA
 print_section_header "Generate ECDSA key for Intermediate CA"
-openssl ecparam -name secp384r1 -genkey -out "$intermediate_dir/private/ca.pem"
+openssl ecparam -name secp384r1 -genkey -out "$private_intermediate_dir/ca.pem"
 check_success "Failed to generate ECDSA key for Intermediate CA"
 
 # Generate Certificate Signing Request (CSR) for Intermediate CA
 print_section_header "Generate Certificate Signing Request (CSR) for Intermediate CA"
-openssl req -new -sha384 -config "$intermediate_dir/ca.cnf" -key "$intermediate_dir/private/ca.pem" -out "$intermediate_dir/csr/ca.pem"
+openssl req -new -sha384 -config "$openssl_conf_dir/ca.cnf" -key "$private_intermediate_dir/ca.pem" -out "$csr_dir/ca.pem"
 check_success "Failed to generate CSR for Intermediate CA"
 
 # Generate Intermediate Certificate Authority
 print_section_header "Generate Intermediate Certificate Authority"
-openssl ca -config "$intermediate_dir/ca.cnf" -extensions v3_intermediate_ca -notext -batch -in "$intermediate_dir/csr/ca.pem" -days 1826 -out "$intermediate_dir/certs/ca.pem"
+openssl ca -config "$openssl_conf_dir/ca.cnf" -extensions v3_intermediate_ca -notext -batch -in "$csr_dir/ca.pem" -days 1826 -out "$certs_intermediate_dir/ca.pem"
 check_success "Failed to generate Intermediate CA certificate"
 
 # Create Intermediate Certificate Authority Chain Bundle
 print_section_header "Create Intermediate Certificate Authority Chain Bundle"
-cat "$intermediate_dir/certs/ca.pem" "$root_dir/certs/root_ca_chain_bundle.pem" >"$intermediate_dir/certs/ca_chain_bundle.pem"
+cat "$certs_intermediate_dir/ca.pem" "$certs_root_dir/root_ca_chain_bundle.pem" >"$certs_intermediate_dir/ca_chain_bundle.pem"
 check_success "Failed to create Intermediate CA chain bundle"
 
 # Function to verify certificates
@@ -115,8 +125,12 @@ verify_certificate() {
 
 # Perform certificate verifications
 print_section_header "Verify Certificates"
-verify_certificate "$intermediate_dir/certs/ca_chain_bundle.pem" "$intermediate_dir/certs/ca.pem"
-verify_certificate "$root_dir/certs/root_ca_chain_bundle.pem" "$intermediate_dir/certs/ca.pem"
-verify_certificate "$root_dir/certs/root_ca_chain_bundle.pem" "$intermediate_dir/certs/ca_chain_bundle.pem"
+verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_intermediate_dir/ca.pem"
+verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca.pem"
+verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
+
+# Script completion message
+echo
+print_cyan "Intermediate Certificate Authority process completed successfully."
 
 exit 0
