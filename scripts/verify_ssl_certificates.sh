@@ -61,7 +61,7 @@ print_section_header() {
 check_file_exists() {
   local file_path=$1
   if [ ! -f "$file_path" ]; then
-    echo -e "$file_path: \033[31m[ FAIL ] - File not found\033[0m"
+    echo -e "$file_path: \033[31m[FAIL] - File not found\033[0m"
     return 1
   fi
   return 0
