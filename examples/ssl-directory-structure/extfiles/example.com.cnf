@@ -1,0 +1,6 @@
+subjectAltName = DNS:example.com, DNS:www.example.com
+basicConstraints = critical, CA:FALSE
+keyUsage = critical, digitalSignature
+extendedKeyUsage = serverAuth
+nsCertType = server
+nsComment = OpenSSL Generated Server Certificate
