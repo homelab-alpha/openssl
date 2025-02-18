@@ -78,17 +78,17 @@ default_ca = CA_default   # The default ca section
 ####################################################################
 [ CA_default ]
 
-certs = $HOME/ssl/intermediate/certs   # Where the issued certs are kept
-crl_dir = $HOME/ssl/intermediate/crl   # Where the issued crl are kept
-database = $HOME/ssl/intermediate/db/index.txt   # database index file.
+certs = $HOME/ssl/certs/intermediate/   # Where the issued certs are kept
+crl_dir = $HOME/ssl/crl   # Where the issued crl are kept
+database = $HOME/ssl/db/index.txt   # database index file.
 unique_subject = yes   # Set to 'no' to allow creation of several certs with same subject.
-new_certs_dir = $HOME/ssl/intermediate/newcerts   # default place for new certs.
+new_certs_dir = $HOME/ssl/newcerts   # default place for new certs.
 
-certificate = $HOME/ssl/root/certs/root_ca.pem 	# The CA certificate
-serial = $HOME/ssl/intermediate/db/serial   # The current serial number
-crlnumber = $HOME/ssl/intermediate/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
-crl = $HOME/ssl/root/crl/root_ca.pem   # The current CRL
-private_key = $HOME/ssl/root/private/root_ca.pem   # The private key
+certificate = $HOME/ssl/certs/root/root_ca.pem 	# The CA certificate
+serial = $HOME/ssl/db/serial   # The current serial number
+crlnumber = $HOME/ssl/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
+crl = $HOME/ssl/crl/root_crl.pem   # The current CRL
+private_key = $HOME/ssl/private/root/root_ca.pem   # The private key
 
 x509_extensions = usr_cert   # The extensions to add to the cert
 
@@ -277,7 +277,7 @@ extendedKeyUsage = serverAuth, clientAuth
 # Only issuerAltName and authorityKeyIdentifier make any sense in a CRL.
 
 # issuerAltName = issuer:copy
-authorityKeyIdentifier = keyid:always
+authorityKeyIdentifier = keyid:always,issuer:always
 
 [ proxy_cert_ext ]
 # These extensions should be added when creating a proxy certificate
@@ -315,11 +315,11 @@ default_tsa = tsa_config1   # the default TSA section
 [ tsa_config1 ]
 
 # These are used by the TSA reply generation only.
-serial = $HOME/ssl/tsaserial   # The current serial number (mandatory)
+serial = $HOME/ssl/tsa/db/serial   # The current serial number (mandatory)
 crypto_device = builtin   # OpenSSL engine to use for signing
-signer_cert = $HOME/ssl/tsacert.pem   # The TSA signing certificate (optional)
-certs = $HOME/ssl/cacert.pem   # Certificate chain to include in reply (optional)
-signer_key = $HOME/ssl/private/tsakey.pem   # The TSA private key (optional)
+signer_cert = $HOME/ssl/tsa/certs/tsa_cert.pem   # The TSA signing certificate (optional)
+certs = $HOME/ssl/certs/intermediate/ca_chain_bundle.pem   # Certificate chain to include in reply (optional)
+signer_key = $HOME/ssl/tsa/private/tsakey.pem   # The TSA private key (optional)
 signer_digest = sha384   # Signing digest to use. (Optional)
 default_policy = tsa_policy1   # Policy if request did not specify it (optional)
 other_policies = tsa_policy2, tsa_policy3   # acceptable policies (optional)
