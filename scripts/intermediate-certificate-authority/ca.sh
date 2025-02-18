@@ -131,6 +131,6 @@ verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermedia
 
 # Script completion message
 echo
-print_cyan "Intermediate Certificate Authority process completed successfully."
+print_cyan "Intermediate Certificate Authority process successfully completed."
 
 exit 0

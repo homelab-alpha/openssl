@@ -136,6 +136,6 @@ verify_certificate "$certs_root_dir/trusted_id.pem" "$certs_root_dir/root_ca_cha
 
 # Script completion message
 echo
-print_cyan "Certificate Authority process completed successfully."
+print_cyan "Certificate Authority process successfully completed."
 
 exit 0

@@ -146,6 +146,6 @@ print_cyan "--> ${fqdn}.key"
 
 # Script completion message
 echo
-print_cyan "Certificate process completed successfully."
+print_cyan "Certificate process successfully completed."
 
 exit 0

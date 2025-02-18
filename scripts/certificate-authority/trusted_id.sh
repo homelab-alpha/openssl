@@ -134,6 +134,6 @@ print_cyan "--> trusted_id.crt"
 
 # Script completion message
 echo
-print_cyan "Certificate Authority process completed successfully."
+print_cyan "Certificate Authority process successfully completed."
 
 exit 0
