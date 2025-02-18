@@ -385,4 +385,4 @@ oldcert = $insta::certout   # insta.cert.pem
 [ rr ]
 # Certificate revocation
 cmd = rr
-oldcert =  $insta::certout   # insta.cert.pem
+oldcert = $insta::certout   # insta.cert.pem

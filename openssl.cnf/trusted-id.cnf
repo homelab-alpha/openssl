@@ -359,17 +359,17 @@ certout = insta.cert.pem
 
 [ pbm ]   # Password-based protection for Insta CA
 # Server and client authentication
-ref = insta::ref   # 3078
-secret = insta::secret   # pass:insta
+ref = $insta::ref   # 3078
+secret = $insta::secret   # pass:insta
 
 [ signature ]   # Signature-based protection for Insta CA
 # Server authentication
-trusted = insta::out_trusted   # apps/insta.ca.crt
+trusted = $insta::out_trusted   # apps/insta.ca.crt
 
 # Client authentication
 secret =   # disable PBM
-key = insta::newkey   # insta.priv.pem
-cert = insta::certout   # insta.cert.pem
+key = $insta::newkey   # insta.priv.pem
+cert = $insta::certout   # insta.cert.pem
 
 [ ir ]
 cmd = ir
@@ -380,9 +380,9 @@ cmd = cr
 [ kur ]
 # Certificate update
 cmd = kur
-oldcert = insta::certout   # insta.cert.pem
+oldcert = $insta::certout   # insta.cert.pem
 
 [ rr ]
 # Certificate revocation
 cmd = rr
-oldcert = insta::certout   # insta.cert.pem
+oldcert = $insta::certout   # insta.cert.pem

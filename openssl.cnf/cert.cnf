@@ -78,15 +78,15 @@ default_ca = CA_default   # The default ca section
 ####################################################################
 [ CA_default ]
 
-certs = $HOME/ssl/intermediate/certs   # Where the issued certs are kept
-crl_dir = $HOME/ssl/intermediate/crl   # Where the issued crl are kept
-database = $HOME/ssl/intermediate/db/index.txt   # database index file.
+certs = $HOME/ssl/certificates/certs   # Where the issued certs are kept
+crl_dir = $HOME/ssl/certificates/crl   # Where the issued crl are kept
+database = $HOME/ssl/certificates/db/index.txt   # database index file.
 unique_subject = yes   # Set to 'no' to allow creation of several certs with same subject.
-new_certs_dir = $HOME/ssl/intermediate/newcerts   # default place for new certs.
+new_certs_dir = $HOME/ssl/certificates/newcerts   # default place for new certs.
 
 certificate = $HOME/ssl/intermediate/certs/ca.pem 	# The CA certificate
-serial = $HOME/ssl/intermediate/db/serial   # The current serial number
-crlnumber = $HOME/ssl/intermediate/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
+serial = $HOME/ssl/certificates/db/serial   # The current serial number
+crlnumber = $HOME/ssl/certificates/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
 crl = $HOME/ssl/intermediate/crl/ca.pem   # The current CRL
 private_key = $HOME/ssl/intermediate/private/ca.pem   # The private key
 
