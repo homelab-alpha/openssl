@@ -2,8 +2,8 @@
 
 # Script Name: ssl_directory_setup.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-17T08:56:25+01:00
-# Version: 2.2.0
+# Date: 2025-02-18T08:17:58+01:00
+# Version: 2.3.0
 
 # Description:
 # This script sets up a directory structure for SSL certificate management, generates
@@ -51,15 +51,13 @@ root_dir="$ssl_dir/root"
 intermediate_dir="$ssl_dir/intermediate"
 certificates_dir="$ssl_dir/certificates"
 tsa_dir="$ssl_dir/tsa"
-crl_backup_dir="$ssl_dir/crl-backups"
 
 # Create directory structure.
 print_section_header "Create directory structure"
-mkdir -p "$root_dir"/{certs,crl,csr,db,newcerts,private} \
-  "$intermediate_dir"/{certs,crl,csr,db,newcerts,private} \
-  "$certificates_dir"/{certs,crl,csr,db,extfile,newcerts,private} \
+mkdir -p "$root_dir"/{certs,crl,crl-backup,csr,db,newcerts,private} \
+  "$intermediate_dir"/{certs,crl,crl-backup,csr,db,newcerts,private} \
+  "$certificates_dir"/{certs,crl,crl-backup,csr,db,extfile,newcerts,private} \
   "$tsa_dir"/{cacerts,db,private,tsacerts} \
-  "$crl_backup_dir"
 
 # Create db files and set unique_subject attribute.
 print_section_header "Create db files and set unique_subject attribute"
