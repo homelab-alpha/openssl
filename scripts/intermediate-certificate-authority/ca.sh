@@ -2,8 +2,8 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-18T17:31:25+01:00
-# Version: 2.5.0
+# Date: 2025-02-19T10:19:12+01:00
+# Version: 2.6.0
 
 # Description:
 # This script automates the process of setting up and managing an
@@ -128,6 +128,15 @@ print_section_header "Verify Certificates"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_intermediate_dir/ca.pem"
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca.pem"
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
+
+# Convert Certificate from .pem to .crt.
+print_section_header "Convert Intermediate Certificate Authority Formats"
+cp "$certs_intermediate_dir/ca.pem" "$certs_intermediate_dir/ca.crt"
+cp "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.crt"
+check_success "Failed to convert certificate"
+echo
+print_cyan "--> ca.crt"
+print_cyan "--> ca_chain_bundle.crt"
 
 # Script completion message
 echo
