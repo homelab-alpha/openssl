@@ -2,8 +2,8 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T10:19:12+01:00
-# Version: 2.6.0
+# Date: 2025-02-19T11:16:16+01:00
+# Version: 2.6.2
 
 # Description:
 # This script automates the process of setting up and managing an
@@ -30,7 +30,7 @@ generate_random_hex() {
 
 # Function to print section headers.
 print_section_header() {
-  echo ""
+  echo
   print_cyan "=== $1 ==="
 }
 
@@ -87,10 +87,10 @@ if [[ "$unique_subject" == "no" && -f "$ca_path" ]]; then
   print_section_header "⚠️  WARNING: Overwriting Intermediate Certificate Authority"
 
   echo "[WARNING] Intermediate Certificate Authority already exists and will be OVERWRITTEN!" >&2
-  echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
+  echo "[WARNING] This action will require REGENERATING ALL ISSUED CERTIFICATES!" >&2
   echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
 
-  read -p -r "Do you want to continue? (yes/no): " confirm
+  read -r -p "Do you want to continue? (yes/no): " confirm
   if [[ "$confirm" != "yes" ]]; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1

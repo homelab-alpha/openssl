@@ -2,8 +2,8 @@
 
 # Script Name: root_ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T10:22:22+01:00
-# Version: 2.6.0
+# Date: 2025-02-19T10:41:36+01:00
+# Version: 2.6.1
 
 # Description:
 # This script sets up and manages a Root Certificate Authority (CA). It
@@ -36,7 +36,7 @@ generate_random_hex() {
 
 # Function to print section headers.
 print_section_header() {
-  echo ""
+  echo
   print_cyan "=== $1 ==="
 }
 
@@ -95,7 +95,7 @@ if [[ "$unique_subject" == "no" && -f "$root_ca_path" ]]; then
   echo "[WARNING] This action will require REGENERATING ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
   echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
 
-  read -p -r "Do you want to continue? (yes/no): " confirm
+  read -r -p "Do you want to continue? (yes/no): " confirm
   if [[ "$confirm" != "yes" ]]; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
