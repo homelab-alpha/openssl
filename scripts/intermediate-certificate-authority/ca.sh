@@ -2,8 +2,8 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T10:42:20+01:00
-# Version: 2.6.1
+# Date: 2025-02-19T11:16:16+01:00
+# Version: 2.6.2
 
 # Description:
 # This script automates the process of setting up and managing an
@@ -87,7 +87,7 @@ if [[ "$unique_subject" == "no" && -f "$ca_path" ]]; then
   print_section_header "⚠️  WARNING: Overwriting Intermediate Certificate Authority"
 
   echo "[WARNING] Intermediate Certificate Authority already exists and will be OVERWRITTEN!" >&2
-  echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
+  echo "[WARNING] This action will require REGENERATING ALL ISSUED CERTIFICATES!" >&2
   echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
 
   read -r -p "Do you want to continue? (yes/no): " confirm
