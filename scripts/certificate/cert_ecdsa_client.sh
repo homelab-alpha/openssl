@@ -3,7 +3,7 @@
 # Script Name: cert_ecdsa_client.sh
 # Author: GJS (homelab-alpha)
 # Date: 2025-02-18T17:31:25+01:00
-# Version: 2.5.0
+# Version: 2.5.1
 
 # Description:
 # This script automates the creation of an ECDSA client certificate.
@@ -29,7 +29,7 @@ generate_random_hex() {
 
 # Function to print section headers.
 print_section_header() {
-  echo ""
+  echo
   print_cyan "=== $1 ==="
 }
 
@@ -132,7 +132,7 @@ cp "$certs_certificates_dir/${fqdn}.pem" "$certs_certificates_dir/${fqdn}.crt"
 cp "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.crt"
 cp "$private_certificates_dir/${fqdn}.pem" "$private_certificates_dir/${fqdn}.key"
 chmod 600 "$private_certificates_dir/${fqdn}.key"
-
+echo
 print_cyan "--> ${fqdn}.crt"
 print_cyan "--> ${fqdn}_chain_bundle.crt"
 print_cyan "--> ${fqdn}.key"
