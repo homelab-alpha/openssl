@@ -2,8 +2,8 @@
 
 # Script Name: root_ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-18T17:31:25+01:00
-# Version: 2.5.0
+# Date: 2025-02-19T10:22:22+01:00
+# Version: 2.6.0
 
 # Description:
 # This script sets up and manages a Root Certificate Authority (CA). It
@@ -133,6 +133,15 @@ print_section_header "Verify Certificates"
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_root_dir/root_ca.pem"
 verify_certificate "$certs_root_dir/trusted_id.pem" "$certs_root_dir/root_ca.pem"
 verify_certificate "$certs_root_dir/trusted_id.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
+
+# Convert Certificate from .pem to .crt.
+print_section_header "Convert Root Certificate Authority Formats"
+cp "$certs_root_dir/root_ca.pem" "$certs_root_dir/root_ca.crt"
+cp "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_root_dir/root_ca_chain_bundle.crt"
+check_success "Failed to convert certificate"
+echo
+print_cyan "--> root_ca.crt"
+print_cyan "--> root_ca_chain_bundle.crt"
 
 # Script completion message
 echo
