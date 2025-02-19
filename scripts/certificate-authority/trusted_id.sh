@@ -2,8 +2,8 @@
 
 # Script Name: trusted_id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-18T17:31:25+01:00
-# Version: 2.5.0
+# Date: 2025-02-19T10:41:24+01:00
+# Version: 2.5.1
 
 # Description:
 # This script generates and manages a trusted root certificate for a
@@ -35,7 +35,7 @@ generate_random_hex() {
 
 # Function to print section headers.
 print_section_header() {
-  echo ""
+  echo
   print_cyan "=== $1 ==="
 }
 
@@ -93,7 +93,7 @@ if [[ "$unique_subject" == "no" && -f "$trusted_id_path" ]]; then
   echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
   echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
 
-  read -p -r "Do you want to continue? (yes/no): " confirm
+  read -r -p "Do you want to continue? (yes/no): " confirm
   if [[ "$confirm" != "yes" ]]; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
@@ -129,7 +129,7 @@ check_success "Failed to check certificate"
 print_section_header "Convert from trusted_id.pem to trusted_id.crt"
 cp "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.crt"
 check_success "Failed to convert certificate"
-
+echo
 print_cyan "--> trusted_id.crt"
 
 # Script completion message
