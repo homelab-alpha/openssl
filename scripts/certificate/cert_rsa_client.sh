@@ -2,8 +2,8 @@
 
 # Script Name: cert_rsa_client.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T10:44:21+01:00
-# Version: 2.5.1
+# Date: 2025-02-20T11:03:22+01:00
+# Version: 2.5.2
 
 # Description:
 # This script automates the creation of an RSA client certificate. It handles
@@ -86,6 +86,7 @@ if grep -q "CN=${fqdn}" "$db_dir/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
+# If unique_subject is enabled and Certificate exists, display an error and exit
 if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
   echo "[ERROR] unique_subject is enabled and CSR with Common Name ${fqdn} already exists in index.txt" >&2
   exit 1
@@ -97,9 +98,9 @@ openssl genrsa -out "$private_certificates_dir/${fqdn}.pem"
 check_success "Failed to generate RSA key"
 
 # Generate Certificate Signing Request (CSR)
-print_section_header "Generate Certificate Signing Request (CSR)"
+print_section_header "Generate Certificate Signing Request"
 openssl req -new -sha256 -config "$openssl_conf_dir/cert.cnf" -key "$private_certificates_dir/${fqdn}.pem" -out "$csr_dir/${fqdn}.pem"
-check_success "Failed to generate CSR"
+check_success "Failed to generate Certificate Signing Request"
 
 # Create an extfile with all the alternative names
 print_section_header "Create an extfile with all the alternative names"
@@ -115,12 +116,12 @@ print_section_header "Create an extfile with all the alternative names"
 # Generate Certificate
 print_section_header "Generate Certificate"
 openssl ca -config "$openssl_conf_dir/cert.cnf" -notext -batch -in "$csr_dir/${fqdn}.pem" -out "$certs_certificates_dir/${fqdn}.pem" -extfile "$extfile_dir/${fqdn}.cnf"
-check_success "Failed to generate certificate"
+check_success "Failed to generate Certificate"
 
 # Create Certificate Chain Bundle
 print_section_header "Create Certificate Chain Bundle"
 cat "$certs_certificates_dir/${fqdn}.pem" "$certs_intermediate_dir/ca_chain_bundle.pem" >"$certs_certificates_dir/${fqdn}_chain_bundle.pem"
-check_success "Failed to create certificate chain bundle"
+check_success "Failed to create Certificate Chain Bundle"
 
 # Perform certificate verifications
 print_section_header "Verify Certificates"
@@ -129,12 +130,14 @@ verify_certificate() {
   check_success "Verification failed for $2"
 }
 
+# Perform certificate verifications
+print_section_header "Verify Certificates"
 verify_certificate "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.pem"
 
 # Convert Certificate from .pem to .crt and .key
-print_section_header "Convert Certificate Formats"
+print_section_header "Convert Certificate from .pem to .crt and .key"
 cp "$certs_certificates_dir/${fqdn}.pem" "$certs_certificates_dir/${fqdn}.crt"
 cp "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.crt"
 cp "$private_certificates_dir/${fqdn}.pem" "$private_certificates_dir/${fqdn}.key"
