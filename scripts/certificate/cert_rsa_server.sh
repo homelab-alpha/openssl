@@ -2,8 +2,8 @@
 
 # Script Name: cert_rsa_server.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T10:44:33+01:00
-# Version: 2.5.1
+# Date: 2025-02-20T16:08:52+01:00
+# Version: 2.5.3
 
 # Description:
 # This script automates the creation and management of RSA certificates
@@ -141,7 +141,6 @@ verify_certificate() {
 }
 
 # Perform certificate verifications
-print_section_header "Verify Certificates"
 verify_certificate "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.pem"

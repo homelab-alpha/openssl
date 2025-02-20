@@ -2,8 +2,8 @@
 
 # Script Name: trusted_id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T10:54:58+01:00
-# Version: 2.5.2
+# Date: 2025-02-20T16:09:09+01:00
+# Version: 2.5.3
 
 # Description:
 # This script generates and manages a trusted root certificate for a

@@ -2,8 +2,8 @@
 
 # Script Name: cert_ecdsa_client.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T11:03:51+01:00
-# Version: 2.5.2
+# Date: 2025-02-20T16:09:06+01:00
+# Version: 2.5.3
 
 # Description:
 # This script automates the creation of an ECDSA client certificate.
@@ -123,7 +123,6 @@ verify_certificate() {
 }
 
 # Perform certificate verifications
-print_section_header "Verify Certificates"
 verify_certificate "$certs_certificates_dir/${fqdn}_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}.pem"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.pem"

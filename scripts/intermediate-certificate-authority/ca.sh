@@ -2,8 +2,8 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T10:56:11+01:00
-# Version: 2.6.3
+# Date: 2025-02-20T16:09:11+01:00
+# Version: 2.6.4
 
 # Description:
 # This script automates the process of setting up and managing an
@@ -125,7 +125,6 @@ verify_certificate() {
 }
 
 # Perform certificate verifications
-print_section_header "Verify Certificates"
 verify_certificate "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_intermediate_dir/ca.pem"
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca.pem"
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"

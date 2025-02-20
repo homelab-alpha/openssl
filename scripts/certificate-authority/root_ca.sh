@@ -2,8 +2,8 @@
 
 # Script Name: root_ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T10:52:23+01:00
-# Version: 2.6.2
+# Date: 2025-02-20T16:09:08+01:00
+# Version: 2.6.3
 
 # Description:
 # This script sets up and manages a Root Certificate Authority (CA). It
@@ -130,7 +130,6 @@ verify_certificate() {
 }
 
 # Perform certificate verifications
-print_section_header "Verify Certificates"
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_root_dir/root_ca.pem"
 verify_certificate "$certs_root_dir/trusted_id.pem" "$certs_root_dir/root_ca.pem"
 verify_certificate "$certs_root_dir/trusted_id.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
