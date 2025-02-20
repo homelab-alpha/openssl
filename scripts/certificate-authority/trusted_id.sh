@@ -2,8 +2,8 @@
 
 # Script Name: trusted_id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T10:41:24+01:00
-# Version: 2.5.1
+# Date: 2025-02-20T10:54:58+01:00
+# Version: 2.5.2
 
 # Description:
 # This script generates and manages a trusted root certificate for a
@@ -100,18 +100,18 @@ if [[ "$unique_subject" == "no" && -f "$trusted_id_path" ]]; then
   fi
 fi
 
-# Generate ECDSA key for Trusted ID
-print_section_header "Generate ECDSA key for Trusted ID"
+# Generate ECDSA key
+print_section_header "Generate ECDSA key"
 openssl ecparam -name secp384r1 -genkey -out "$private_root_dir/trusted_id.pem"
 check_success "Failed to generate ECDSA key"
 
-# Generate Certificate Signing Request (CSR) for Trusted ID
-print_section_header "Generate Certificate Signing Request (CSR) for Trusted ID"
+# Generate Certificate Signing Request (CSR)
+print_section_header "Generate Certificate Signing Request"
 openssl req -new -x509 -sha384 -config "$openssl_conf_dir/trusted_id.cnf" -extensions v3_ca -key "$private_root_dir/trusted_id.pem" -days 10956 -out "$certs_root_dir/trusted_id.pem"
-check_success "Failed to generate certificate"
+check_success "Failed to generate Certificate Signing Request"
 
-# Verify Certificate against itself.
-print_section_header "Verify Certificate against itself"
+# Perform certificate verifications
+print_section_header "Verify Certificates"
 openssl verify -CAfile "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.pem"
 check_success "Verification failed for certificate"
 
@@ -126,14 +126,14 @@ openssl x509 -in "$certs_root_dir/trusted_id.pem" -text -noout
 check_success "Failed to check certificate"
 
 # Convert Certificate from .pem to .crt.
-print_section_header "Convert from trusted_id.pem to trusted_id.crt"
+print_section_header "Convert Trusted ID Certificate Authority from .pem to .crt"
 cp "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.crt"
-check_success "Failed to convert certificate"
+check_success "Failed to convert Trusted ID Certificate Authority from .pem to .crt"
 echo
 print_cyan "--> trusted_id.crt"
 
 # Script completion message
 echo
-print_cyan "Certificate Authority process successfully completed."
+print_cyan "Trusted ID Certificate Authority process successfully completed."
 
 exit 0

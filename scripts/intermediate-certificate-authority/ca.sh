@@ -2,8 +2,8 @@
 
 # Script Name: ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-19T11:16:16+01:00
-# Version: 2.6.2
+# Date: 2025-02-20T10:56:11+01:00
+# Version: 2.6.3
 
 # Description:
 # This script automates the process of setting up and managing an
@@ -71,13 +71,13 @@ if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; the
 fi
 
 ca_path="$certs_intermediate_dir/ca.pem"
-trusted_id_exists=false
+ca_exists=false
 if [[ -f "$ca_path" ]]; then
-  trusted_id_exists=true
+  ca_exists=true
 fi
 
 # If unique_subject is enabled and Intermediate Certificate Authority exists, display an error and exit
-if [[ "$unique_subject" == "yes" && "$trusted_id_exists" == "true" ]]; then
+if [[ "$unique_subject" == "yes" && "$ca_exists" == "true" ]]; then
   echo "[ERROR] unique_subject is enabled and Intermediate Certificate Authority already exists." >&2
   exit 1
 fi
@@ -97,27 +97,28 @@ if [[ "$unique_subject" == "no" && -f "$ca_path" ]]; then
   fi
 fi
 
-# Generate ECDSA key for Intermediate CA
-print_section_header "Generate ECDSA key for Intermediate CA"
+# Generate ECDSA key
+print_section_header "Generate ECDSA key"
 openssl ecparam -name secp384r1 -genkey -out "$private_intermediate_dir/ca.pem"
-check_success "Failed to generate ECDSA key for Intermediate CA"
+check_success "Failed to generate ECDSA key"
 
-# Generate Certificate Signing Request (CSR) for Intermediate CA
-print_section_header "Generate Certificate Signing Request (CSR) for Intermediate CA"
+# Generate Certificate Signing Request (CSR)
+print_section_header "Generate Certificate Signing Request"
 openssl req -new -sha384 -config "$openssl_conf_dir/ca.cnf" -key "$private_intermediate_dir/ca.pem" -out "$csr_dir/ca.pem"
-check_success "Failed to generate CSR for Intermediate CA"
+check_success "Failed to generate Certificate Signing Request"
 
 # Generate Intermediate Certificate Authority
 print_section_header "Generate Intermediate Certificate Authority"
 openssl ca -config "$openssl_conf_dir/ca.cnf" -extensions v3_intermediate_ca -notext -batch -in "$csr_dir/ca.pem" -days 1826 -out "$certs_intermediate_dir/ca.pem"
-check_success "Failed to generate Intermediate CA certificate"
+check_success "Failed to generate Intermediate Certificate Authority"
 
 # Create Intermediate Certificate Authority Chain Bundle
 print_section_header "Create Intermediate Certificate Authority Chain Bundle"
 cat "$certs_intermediate_dir/ca.pem" "$certs_root_dir/root_ca_chain_bundle.pem" >"$certs_intermediate_dir/ca_chain_bundle.pem"
-check_success "Failed to create Intermediate CA chain bundle"
+check_success "Failed to create Intermediate Certificate Authority Chain Bundle"
 
-# Function to verify certificates
+# Perform certificate verifications
+print_section_header "Verify Certificates"
 verify_certificate() {
   openssl verify -CAfile "$1" "$2"
   check_success "Verification failed for $2"
@@ -130,10 +131,10 @@ verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermedia
 verify_certificate "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
 
 # Convert Certificate from .pem to .crt.
-print_section_header "Convert Intermediate Certificate Authority Formats"
+print_section_header "Convert Intermediate Certificate Authority from .pem to .crt"
 cp "$certs_intermediate_dir/ca.pem" "$certs_intermediate_dir/ca.crt"
 cp "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.crt"
-check_success "Failed to convert certificate"
+check_success "Failed to convert Intermediate Certificate Authority from .pem to .crt"
 echo
 print_cyan "--> ca.crt"
 print_cyan "--> ca_chain_bundle.crt"
