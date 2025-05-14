@@ -1,4 +1,7 @@
-# GitHub Workspace
+# GitLeaks ignore
+
+## GitHub Workspace
+
 /github/workspace/examples/ssl-directory-structure/certs/certificates/example.com_haproxy.pem:private-key:32
 /github/workspace/examples/ssl-directory-structure/certs/certificates/localhost_haproxy.pem:private-key:32
 /github/workspace/examples/ssl-directory-structure/private/certificates/example.com.key:private-key:4
@@ -9,8 +12,8 @@
 /github/workspace/examples/ssl-directory-structure/private/root/root_ca.pem:private-key:4
 /github/workspace/examples/ssl-directory-structure/private/root/trusted_id.pem:private-key:4
 
+## Super Linter Local
 
-# Super Linter Local
 /tmp/lint/examples/ssl-directory-structure/certs/certificates/example.com_haproxy.pem:private-key:32
 /tmp/lint/examples/ssl-directory-structure/certs/certificates/localhost_haproxy.pem:private-key:32
 /tmp/lint/examples/ssl-directory-structure/private/certificates/example.com.key:private-key:4
