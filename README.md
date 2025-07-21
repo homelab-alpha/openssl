@@ -1,8 +1,9 @@
-# Homelab-Alpha
+# OpenSSL
 
 [![Super Linter](https://github.com/homelab-alpha/openssl/actions/workflows/super_linter.yml/badge.svg)](https://github.com/homelab-alpha/openssl/actions/workflows/super_linter.yml)
+[![Last commit](https://img.shields.io/github/last-commit/homelab-alpha/openssl?style=flat&logo=github&logoColor=96a1a9&label=Last%20commit&labelColor=313A41&color=BA935B&cacheSeconds=3600)](https://github.com/homelab-alpha/openssl/commits/main/)
 
-Welcome to the Homelab-Alpha OpenSSL Repository!
+Welcome to the Homelab-Alpha OpenSSL repository!
 
 For all related documentation and more information about this repository, please
 visit [Homelab-Alpha/OpenSSL].
