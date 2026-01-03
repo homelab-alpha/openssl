@@ -50,8 +50,8 @@ by creating a pull request.
 You can ask general questions and get community support through our [community].
 
 If you have an idea for a new feature or behavior change in a specific aspect of
-Homelab-Alpha OpenSSL or have found a bug, file that issue in the project's code
-repository.
+Homelab-Alpha OpenSSL or have found a bug, file that issue in the project's
+code repository.
 
 We've made it easy for you to file new issues.
 
@@ -67,9 +67,6 @@ We've made it easy for you to file new issues.
   your experience. Please take a moment to share your thoughts with us using the
   link [give feedback]. Whether it's praise, criticism, or suggestions for
   improvement, we want to hear it all!
-- **Ideas:** We're always eager to hear your creative ideas and suggestions for
-  a new project. Please share any thoughts or concepts you have using the link
-  [ideas]. Your input helps shape the future of what we do!
 - **Feature request:** We love hearing your ideas for making our project even
   better. Please use the link [feature request] to share your feature request
   with us. Be sure to provide as much detail as possible to help us understand
@@ -153,8 +150,9 @@ become effective when posted on this page.
 
 ### Contact Us
 
-If you have any questions about this Privacy Policy, you can reach us by
-visiting this page on our website: [Homelab-Alpha's contact]
+If you have any questions about our Privacy Policy or this repository, please
+contact us by emailing the
+**[Homelab-Alpha team](mailto:homelab.api@gmail.com)**.
 
 ## Governing Law
 
@@ -163,10 +161,11 @@ arising from the use of [Homelab-Alpha's website] and [Homelab-Alpha's GitHub
 repositories] shall be subject to the exclusive jurisdiction of the courts of
 the Netherlands.
 
-**Copyright and License**
+## Copyright and License
 
-&copy; 2024 Homelab-Alpha and its repositories are licensed under the terms of
-the [license] agreement.
+&copy; 2024 **Homelab-Alpha**. This repository is licensed under the **Creative
+Commons Attribution–NonCommercial–ShareAlike 4.0 (CC BY-NC-SA 4.0)** license.
+See the [LICENSE] file for more details.
 
 [Homelab-Alpha/OpenSSL]: https://homelab-alpha.nl/openssl
 [Homelab-Alpha's website]: https://homelab-alpha.nl
@@ -175,8 +174,6 @@ the [license] agreement.
 [bug report]: https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=bug&projects=&template=bug_report.yml
 [security report]: https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=security&projects=&template=security_report.yml
 [give feedback]: https://github.com/homelab-alpha/openssl/discussions/categories/feedback
-[ideas]: https://github.com/homelab-alpha/openssl/discussions/categories/ideas
-[feature request]: https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=feature+request&projects=&template=feature_request.yml
+[feature request]: https://github.com/homelab-alpha/openssl/discussions/categories/feature-request
+[LICENSE]: https://github.com/homelab-alpha/openssl/blob/main/LICENSE.md
 [contributing]: CONTRIBUTING.md
-[Homelab-Alpha's contact]: https://homelab-alpha.nl/contact
-[license]: LICENSE.md
