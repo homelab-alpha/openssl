@@ -50,8 +50,8 @@ by creating a pull request.
 You can ask general questions and get community support through our [community].
 
 If you have an idea for a new feature or behavior change in a specific aspect of
-Homelab-Alpha OpenSSL or have found a bug, file that issue in the project's
-code repository.
+Homelab-Alpha OpenSSL or have found a bug, file that issue in the project's code
+repository.
 
 We've made it easy for you to file new issues.
 
@@ -171,9 +171,13 @@ See the [LICENSE] file for more details.
 [Homelab-Alpha's website]: https://homelab-alpha.nl
 [Homelab-Alpha's GitHub repositories]: https://github.com/homelab-alpha
 [community]: https://github.com/homelab-alpha/openssl/discussions
-[bug report]: https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=bug&projects=&template=bug_report.yml
-[security report]: https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=security&projects=&template=security_report.yml
-[give feedback]: https://github.com/homelab-alpha/openssl/discussions/categories/feedback
-[feature request]: https://github.com/homelab-alpha/openssl/discussions/categories/feature-request
+[bug report]:
+  https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=bug&projects=&template=bug_report.yml
+[security report]:
+  https://github.com/homelab-alpha/openssl/issues/new?assignees=homelab-alpha&labels=security&projects=&template=security_report.yml
+[give feedback]:
+  https://github.com/homelab-alpha/openssl/discussions/categories/feedback
+[feature request]:
+  https://github.com/homelab-alpha/openssl/discussions/categories/feature-request
 [LICENSE]: https://github.com/homelab-alpha/openssl/blob/main/LICENSE
 [contributing]: CONTRIBUTING.md
