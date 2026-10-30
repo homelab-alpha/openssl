@@ -57,7 +57,7 @@ files_to_remove=(
     "$HOME/openssl/.gitignore"
     "$HOME/openssl/.gitleaksignore"
     "$HOME/openssl/CODE_OF_CONDUCT.md"
-    "$HOME/openssl/CODE_STYLE_AND_STANDARDS_GUIDES.md"
+    "$HOME/openssl/docs"
     "$HOME/openssl/CONTRIBUTING.md"
 )
 
