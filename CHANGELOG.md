@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix the link to the documentation site in `README.md`, which pointed to
+  `homelab-alpha.nl/docs/openssl/` instead of `homelab-alpha.nl/openssl/`
 - Fix the GitHub link in `NOTICE`, which pointed to `github.com/openssl`
   instead of `github.com/homelab-alpha`
 - Fix the table of contents link of `CONTRIBUTING.md` to its first heading
