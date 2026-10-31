@@ -61,8 +61,10 @@ other linters. For one file, `npx prettier --write <file>` uses the same
 - `examples/ssl-directory-structure/` holds example keys and certificates.
   Gitleaks reports them, so they are listed in `.gitleaksignore` with the path,
   the rule, and the line number. Update an entry when you change such a file.
-- `ssl_dotfiles_installer.sh` removes files from the clone of the user,
-  including `$HOME/openssl/docs`. Keep that list in line with the repository.
+- `ssl_dotfiles_installer.sh` removes the files that are only needed to develop
+  the repository from the clone of the user, such as `.git` and `.github` (which
+  holds the tooling, the branding, and the style guide). Keep that list in line
+  with the repository.
 - The documentation site shows the scripts (repository `homelab-alpha/docs`,
   folder `content/docs/openssl/script-information/`). Keep the pages in line
   with the scripts.

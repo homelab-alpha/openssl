@@ -2,8 +2,8 @@
 
 # Script Name: ssl_dotfiles_installer.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-10-31T10:53:34+01:00
-# Version: 2.6.0
+# Date: 2026-10-31T21:30:28+01:00
+# Version: 2.7.0
 
 # Description:
 # This script updates ~/.bashrc by adding necessary content if not already
@@ -57,10 +57,7 @@ files_to_remove=(
     "$HOME/openssl/.gitignore"
     "$HOME/openssl/.gitleaksignore"
     "$HOME/openssl/CODE_OF_CONDUCT.md"
-    "$HOME/openssl/docs"
     "$HOME/openssl/CONTRIBUTING.md"
-    "$HOME/openssl/assets"
-    "$HOME/openssl/scripts/generate_badges.py"
 )
 
 # Remove the files and check if they exist
