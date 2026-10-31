@@ -9,14 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add a brand guide and branding files in `assets/branding/` (logo, icons,
+- Add a brand guide and branding files in `.github/branding/` (logo, icons,
   favicon, and social preview), and show the logo at the top of `README.md`
-- Add the `badges.yml` workflow and `scripts/generate_badges.py` to render the
+- Add the `badges.yml` workflow and `.github/scripts/generate_badges.py` to render the
   README badges, including Super Linter and CodeQL, as SVG files on the `badges`
   branch
 
 ### Changed
 
+- Move the repository tooling (`lint.sh`, `generate_badges.py`, `setup_gpg.sh`,
+  and `verify_signatures.sh`) from `scripts/` to `.github/scripts/`, the
+  branding from `assets/branding/` to `.github/branding/`, and the code style
+  guide from `docs/` to `.github/docs/`. `scripts/` keeps the certificate
+  scripts
+- Add a 20 px protective border to the logo SVGs and show the logo in
+  `README.md` at a fixed height of 100 px
+- Update the badges only after Lint Repository and CodeQL ran and passed for the
+  same commit: remove the `push` trigger from `badges.yml` and add the
+  `check-workflows` job
 - Remove the `assets` folder and `scripts/generate_badges.py` from the clone in
   `ssl_dotfiles_installer.sh` (version 2.6.0)
 - Replace the `img.shields.io` badges in `README.md` with the self-hosted
@@ -38,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix the table of contents link of `CONTRIBUTING.md` to its first heading
 
 ### Security
+
+- Override the transitive dev dependencies `glob` (14.0.3) and `minimatch`
+  (11.0.3) to fix Dependabot alerts, which textlint pulls in
 
 [Unreleased]: https://github.com/homelab-alpha/openssl/compare/main...HEAD
 
