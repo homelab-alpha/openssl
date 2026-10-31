@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Remove the `assets` folder and `scripts/generate_badges.py` from the clone in
+  `ssl_dotfiles_installer.sh` (version 2.6.0)
 - Replace the `img.shields.io` badges in `README.md` with the self-hosted
   badges
 - Explain in `.github/super_linter.env` when to enable PowerShell validation

@@ -2,8 +2,8 @@
 
 # Script Name: ssl_dotfiles_installer.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-18T17:31:25+01:00
-# Version: 2.5.0
+# Date: 2026-10-31T10:53:34+01:00
+# Version: 2.6.0
 
 # Description:
 # This script updates ~/.bashrc by adding necessary content if not already
@@ -59,6 +59,8 @@ files_to_remove=(
     "$HOME/openssl/CODE_OF_CONDUCT.md"
     "$HOME/openssl/docs"
     "$HOME/openssl/CONTRIBUTING.md"
+    "$HOME/openssl/assets"
+    "$HOME/openssl/scripts/generate_badges.py"
 )
 
 # Remove the files and check if they exist
