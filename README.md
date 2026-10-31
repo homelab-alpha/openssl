@@ -67,7 +67,7 @@ localhost certificates, and that verify the result.
 > purposes. Do not use them in production.
 
 More documentation is on the
-[Homelab-Alpha documentation site](https://homelab-alpha.nl/docs/openssl/).
+[Homelab-Alpha documentation site](https://homelab-alpha.nl/openssl/).
 
 ## Features
 
