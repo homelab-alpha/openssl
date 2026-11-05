@@ -49,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore(scripts): trim the installer removal list [7eddbce](https://github.com/homelab-alpha/openssl/commit/7eddbce86344decbeeed0be953c93473b602b10d) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(workflows): replace deny-licenses with allow-licenses [4a252ba](https://github.com/homelab-alpha/openssl/commit/4a252babc50653697818e6042e783cd828506fa5) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(blueprint): sync with the blueprint [03c26da](https://github.com/homelab-alpha/openssl/commit/03c26da61df31d67b1f8a37a2da5e10eed271268) by [@homelab-alpha](https://github.com/homelab-alpha)
+- ci(workflows): request a reviewer on bot PRs [571d21b](https://github.com/homelab-alpha/openssl/commit/571d21b5fc7cdcec4821dfabcc452ad42ddfe06c) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(github): sync Hugo and Dart Sass rules [f94ef14](https://github.com/homelab-alpha/openssl/commit/f94ef14e86b537542c7b65e49fab8e43603a5a27) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(github): sync runners, Renovate, and linters [8f598b2](https://github.com/homelab-alpha/openssl/commit/8f598b2952f5ae86a1910f39439adcc50d7ca319) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
