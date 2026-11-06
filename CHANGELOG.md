@@ -52,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ci(workflows): request a reviewer on bot PRs [571d21b](https://github.com/homelab-alpha/openssl/commit/571d21b5fc7cdcec4821dfabcc452ad42ddfe06c) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(github): sync Hugo and Dart Sass rules [f94ef14](https://github.com/homelab-alpha/openssl/commit/f94ef14e86b537542c7b65e49fab8e43603a5a27) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(github): sync runners, Renovate, and linters [8f598b2](https://github.com/homelab-alpha/openssl/commit/8f598b2952f5ae86a1910f39439adcc50d7ca319) by [@homelab-alpha](https://github.com/homelab-alpha)
+- ci(workflows): run workflows for bots [038ae2d](https://github.com/homelab-alpha/openssl/commit/038ae2d0db2312a79920081f98fa44b56354234e) by [@homelab-alpha](https://github.com/homelab-alpha)
+- ci(workflows): allow BlueOak-1.0.0 license [6a3a989](https://github.com/homelab-alpha/openssl/commit/6a3a989186f3b96567f8e29bf7db0a6778803446) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
