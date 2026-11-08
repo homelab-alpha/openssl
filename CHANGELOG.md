@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ci(workflows): run workflows for bots [038ae2d](https://github.com/homelab-alpha/openssl/commit/038ae2d0db2312a79920081f98fa44b56354234e) by [@homelab-alpha](https://github.com/homelab-alpha)
 - ci(workflows): allow BlueOak-1.0.0 license [6a3a989](https://github.com/homelab-alpha/openssl/commit/6a3a989186f3b96567f8e29bf7db0a6778803446) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(labels): add dependency update labels [0f01004](https://github.com/homelab-alpha/openssl/commit/0f010040f2a4ee1e021323759d545843d61bfccf) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs(readme): reword the maintenance warning [3d65895](https://github.com/homelab-alpha/openssl/commit/3d658957f1bffd04c4dd101f4b1e7887f84cd4ff) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
@@ -74,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(changelog): remove the date from Unreleased [6c75240](https://github.com/homelab-alpha/openssl/commit/6c7524002fd4bc24c0767ee0ceeef6f4dbbb13ad) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(scripts): restore pull_request_body.py logic [1c5d608](https://github.com/homelab-alpha/openssl/commit/1c5d6083e24bb87def267a93c3ba6ad0e0bcf357) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(changelog): remove the Unreleased link [98976b1](https://github.com/homelab-alpha/openssl/commit/98976b1c2c43a3b319c52edb67875fb40330fea3) by [@homelab-alpha](https://github.com/homelab-alpha)
+- fix(openssl): align configs with OpenSSL 4.x [6bd5392](https://github.com/homelab-alpha/openssl/commit/6bd53925b28edd5019311a3cf3a89efee2e72a8c) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Security
 
