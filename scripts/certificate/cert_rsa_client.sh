@@ -3,7 +3,7 @@
 # Script Name: cert_rsa_client.sh
 # Author: GJS (homelab-alpha)
 # Date: 2025-02-20T16:08:56+01:00
-# Version: 2.5.3
+# Version: 2.5.4
 
 # Description:
 # This script automates the creation of an RSA client certificate. It handles
@@ -94,7 +94,7 @@ fi
 
 # Generate RSA key
 print_section_header "Generate RSA key"
-openssl genrsa -out "$private_certificates_dir/${fqdn}.pem"
+openssl genrsa -out "$private_certificates_dir/${fqdn}.pem" 4096
 check_success "Failed to generate RSA key"
 
 # Generate Certificate Signing Request (CSR)
@@ -109,7 +109,6 @@ print_section_header "Create an extfile with all the alternative names"
   echo "basicConstraints = critical, CA:FALSE"
   echo "keyUsage = critical, digitalSignature"
   echo "extendedKeyUsage = clientAuth, emailProtection"
-  echo "nsCertType = client, email"
   echo "nsComment = OpenSSL Generated Client Certificate"
 } >"$extfile_dir/${fqdn}.cnf"
 

@@ -200,7 +200,6 @@ challengePassword_max = 64
 [ usr_cert ]
 
 # These extensions are added when 'ca' signs a request.
-nsCertType = server
 nsComment = "OpenSSL Generated Server Certificate"
 
 # This goes against PKIX guidelines but some CAs do it and some software
@@ -316,7 +315,6 @@ default_tsa = tsa_config1   # the default TSA section
 
 # These are used by the TSA reply generation only.
 serial = $HOME/ssl/tsa/db/serial   # The current serial number (mandatory)
-crypto_device = builtin   # OpenSSL engine to use for signing
 signer_cert = $HOME/ssl/tsa/certs/tsa_cert.pem   # The TSA signing certificate (optional)
 certs = $HOME/ssl/certs/intermediate/ca_chain_bundle.pem   # Certificate chain to include in reply (optional)
 signer_key = $HOME/ssl/tsa/private/tsakey.pem   # The TSA private key (optional)
