@@ -3,7 +3,7 @@
 # Script Name: cert_ecdsa_server.sh
 # Author: GJS (homelab-alpha)
 # Date: 2025-02-20T16:09:00+01:00
-# Version: 2.5.3
+# Version: 2.5.4
 
 # Description:
 # This script automates the creation of an ECDSA server certificate. It
@@ -110,7 +110,6 @@ print_section_header "Create an extfile with all the alternative names"
   echo "basicConstraints = critical, CA:FALSE"
   echo "keyUsage = critical, digitalSignature"
   echo "extendedKeyUsage = serverAuth"
-  echo "nsCertType = server"
   echo "nsComment = OpenSSL Generated Server Certificate"
 } >"$extfile_dir/${fqdn}.cnf"
 
