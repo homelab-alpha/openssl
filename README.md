@@ -66,6 +66,12 @@ localhost certificates, and that verify the result.
 > The certificates are meant for a homelab environment, primarily for testing
 > purposes. Do not use them in production.
 
+> [!WARNING]
+>
+> This repository is under maintenance. It is being brought in line with
+> OpenSSL 4.x, so parts of it may not work as expected. Check the output before
+> you rely on it.
+
 More documentation is on the
 [Homelab-Alpha documentation site](https://homelab-alpha.nl/openssl/).
 
