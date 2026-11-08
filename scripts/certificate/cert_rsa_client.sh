@@ -2,7 +2,7 @@
 
 # Script Name: cert_rsa_client.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-08T12:30:00+01:00
+# Date: 2026-11-08T14:00:00+01:00
 # Version: 2.6.0
 
 # Description:
@@ -13,11 +13,13 @@
 # verifies the certificate. It converts the certificate into various formats
 # suitable for different applications.
 
-# Usage: ./cert_rsa_client.sh [--fqdn <fqdn>] [-h|--help]
+# Usage: ./cert_rsa_client.sh [--fqdn <fqdn>] [--reuse-key] [-h|--help]
 #
 # Options:
 #  --fqdn <fqdn> Run without questions for this FQDN. The Common Name is
 #                set to the FQDN, so it is not asked a second time.
+#  --reuse-key   Reuse the existing private key of this FQDN instead of
+#                generating a new one. The key must exist.
 #  -h, --help    Show this help.
 #
 # Without options the script asks for the details.
@@ -59,6 +61,7 @@ check_success() {
 # Certificate information
 fqdn=""
 non_interactive=false
+reuse_key=false
 
 # Function to parse arguments
 parse_arguments() {
@@ -73,8 +76,12 @@ parse_arguments() {
       non_interactive=true
       shift 2
       ;;
+    --reuse-key)
+      reuse_key=true
+      shift
+      ;;
     -h | --help)
-      sed -n '/^# Usage:/,/^# Notes:/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
+      sed -n '/^# Usage:/,/^$/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -144,10 +151,18 @@ if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
   exit 1
 fi
 
-# Generate RSA key
-print_section_header "Generate RSA key"
-openssl genrsa -out "$private_certificates_dir/${fqdn}.pem" 4096
-check_success "Failed to generate RSA key"
+# Generate RSA key, or reuse the existing key with --reuse-key
+if [ "$reuse_key" = true ]; then
+  print_section_header "Reuse existing RSA key"
+  if [ ! -f "$private_certificates_dir/${fqdn}.pem" ]; then
+    echo "[ERROR] No existing key found for ${fqdn} to reuse." >&2
+    exit 1
+  fi
+else
+  print_section_header "Generate RSA key"
+  openssl genrsa -out "$private_certificates_dir/${fqdn}.pem" 4096
+  check_success "Failed to generate RSA key"
+fi
 
 # Generate Certificate Signing Request (CSR)
 print_section_header "Generate Certificate Signing Request"
