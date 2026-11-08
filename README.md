@@ -68,9 +68,9 @@ localhost certificates, and that verify the result.
 
 > [!WARNING]
 >
-> This repository is under maintenance. It is being brought in line with
-> OpenSSL 4.x, so parts of it may not work as expected. Check the output before
-> you rely on it.
+> This repository is under maintenance. It is being brought in line with OpenSSL
+> 4.x, so parts of it may not work as expected. Check the output before you rely
+> on it.
 
 More documentation is on the
 [Homelab-Alpha documentation site](https://homelab-alpha.nl/openssl/).
