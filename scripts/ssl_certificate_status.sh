@@ -2,8 +2,8 @@
 
 # Script Name: ssl_certificate_status.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-08T12:00:00+01:00
-# Version: 1.0.0
+# Date: 2026-11-08T16:30:00+01:00
+# Version: 1.1.0
 
 # Description:
 # This script reports the expiry status of all certificates under
@@ -36,6 +36,8 @@
 
 # Notes:
 # The certificates are for a homelab and for testing.
+# A certificate that is revoked in $HOME/ssl/db/index.txt (status R) is shown
+# with the status REVOKED. It is not counted for the exit code.
 # The .crt copies and the chain and HAProxy bundles are skipped, because they
 # contain the same certificates as the .pem files.
 # Dates are calculated in Bash from the OpenSSL notAfter value, so the script
@@ -52,6 +54,7 @@ certs_dir="$base_dir/certs"
 certs_root_dir="$certs_dir/root"
 certs_intermediate_dir="$certs_dir/intermediate"
 certs_certificates_dir="$certs_dir/certificates"
+index_file="$base_dir/db/index.txt"
 
 # Function to print text in cyan color
 print_cyan() {
@@ -170,6 +173,18 @@ get_cn() {
   echo "${subject%%,*}"
 }
 
+# Function to check if a certificate is revoked in the database (status R)
+is_revoked() {
+  local serial
+  [ -f "$index_file" ] || return 1
+  serial=$(openssl x509 -in "$1" -noout -serial 2>/dev/null)
+  serial="${serial#serial=}"
+  awk -F'\t' -v s="$serial" '
+    function norm(x) { x = toupper(x); sub(/^0+/, "", x); return x }
+    $1 == "R" && norm($4) == norm(s) { found = 1 }
+    END { exit !found }' "$index_file"
+}
+
 # Function to check one certificate and store the result
 check_certificate() {
   local file="$1" location="$2"
@@ -201,7 +216,9 @@ check_certificate() {
   fi
 
   # Use -checkend for the decision: it is the authoritative OpenSSL check.
-  if ! openssl x509 -in "$file" -noout -checkend 0 >/dev/null 2>&1; then
+  if is_revoked "$file"; then
+    state="REVOKED"
+  elif ! openssl x509 -in "$file" -noout -checkend 0 >/dev/null 2>&1; then
     state="EXPIRED"
     had_expired=true
   elif ! openssl x509 -in "$file" -noout -checkend "$((threshold * 86400))" >/dev/null 2>&1; then
@@ -256,6 +273,7 @@ print_results() {
     fi
     case "$state" in
     OK) color="$green" ;;
+    REVOKED) color="" ;;
     WARN) color="$yellow" ;;
     *) color="$red" ;;
     esac

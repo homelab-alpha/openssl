@@ -86,6 +86,9 @@ More documentation is on the
 - **Monitoring and renewal** — A script that reports the expiry of all
   certificates, and a script that renews server and client certificates before
   they expire. See [Monitoring and Renewal](#monitoring-and-renewal).
+- **Revocation** — A script that revokes a server or client certificate and
+  generates a Certificate Revocation List (CRL). See
+  [Revoke Certificates](#revoke-certificates).
 - **Aliases** — A set of Bash aliases for every script in
   `dotfiles/.bash_aliases`.
 - **Example** — An example directory structure in
@@ -107,6 +110,7 @@ More documentation is on the
 | `scripts/verify_ssl_certificates.sh`               | Verifies certificates against their chain of trust.                                             | `openssl-verify`           |
 | `scripts/ssl_certificate_status.sh`                | Reports the expiry date and the days left of all certificates. Read only.                       | `openssl-status`           |
 | `scripts/renew_ssl_certificates.sh`                | Renews server and client certificates before they expire.                                       | `openssl-renew`            |
+| `scripts/revoke_ssl_certificates.sh`               | Revokes a server or client certificate and generates a CRL.                                     | `openssl-revoke`           |
 | `scripts/ssl_dotfiles_installer.sh`                | Adds the aliases to `~/.bashrc` when they are not there yet.                                    | —                          |
 
 ### Configuration files
@@ -287,6 +291,52 @@ echo | openssl s_client -connect host.example.test:443 -servername host.example.
   | openssl x509 -noout -checkend "$((30 * 86400))"
 ```
 
+## Revoke Certificates
+
+`openssl-revoke` revokes a server or client certificate, for example after a
+private key leaked. It marks the certificate as revoked in the CA database
+(`~/ssl/db/index.txt`) and generates a new Certificate Revocation List (CRL) in
+`~/ssl/crl/ca_crl.pem`, signed by the intermediate CA. The script verifies the
+CRL with the CA chain before it replaces the previous CRL.
+
+```bash
+openssl-revoke --dry-run www.example.test                     # show the plan and exit
+openssl-revoke www.example.test                               # show the plan and ask first
+openssl-revoke --reason keyCompromise --yes www.example.test  # no questions
+openssl-revoke --no-crl www.example.test                      # revoke, but skip the CRL
+openssl-revoke --crl-only                                     # only generate a new CRL
+```
+
+The reason is one of `unspecified` (default), `keyCompromise`,
+`affiliationChanged`, `superseded`, and `cessationOfOperation`. The script saves
+a copy of `index.txt` in `~/ssl/archive/_database/` before it changes the
+database.
+
+Good to know:
+
+- No file is deleted. The key, the certificate, and the bundles stay where they
+  are, so stop using them yourself.
+- A revoked certificate shows as `REVOKED` in `openssl-status`, and does not
+  count for its exit code. `openssl-renew` refuses it. Issue a new certificate
+  with the certificate scripts instead.
+- CA certificates (trusted identity, root, and intermediate) are not revoked.
+- The certificates have no CRL distribution point. Clients do not find the CRL
+  by themselves. Install `ca_crl.pem` where it is used, for example in the
+  configuration of HAProxy or nginx.
+- A CRL is valid for 30 days. Generate a new one with
+  `openssl-revoke --crl-only` before it expires, for example with a cron job or
+  a timer. The renewal script marks the old entry of a renewed certificate as
+  `superseded`. Run `--crl-only` afterwards to put those entries in the CRL.
+- Exit codes: `0` success, `1` a revocation, the CRL, or a check failed, and `2`
+  wrong usage or a pre-flight error (nothing was changed).
+
+Check a certificate against the CRL:
+
+```bash
+openssl verify -crl_check -CAfile ~/ssl/certs/intermediate/ca_chain_bundle.pem \
+  -CRLfile ~/ssl/crl/ca_crl.pem ~/ssl/certs/certificates/www.example.test.crt
+```
+
 ## Development
 
 Set up the dev tooling on any computer. It needs Node.js 24 (see `engines` in
@@ -416,6 +466,7 @@ openssl/
 │   ├── intermediate-certificate-authority/     # Intermediate CA script
 │   │   └── ca.sh                               # Creates the intermediate certificate authority and its CA chain bundle
 │   ├── renew_ssl_certificates.sh               # Renews server and client certificates before they expire
+│   ├── revoke_ssl_certificates.sh              # Revokes a server or client certificate and generates a CRL
 │   ├── ssl_certificate_status.sh               # Reports the expiry date and the days left of all certificates
 │   ├── ssl_directory_setup.sh                  # Sets up the directory structure for certificate management and the OpenSSL configuration files
 │   ├── ssl_dotfiles_installer.sh               # Adds the aliases to `~/.bashrc` when they are not there yet
