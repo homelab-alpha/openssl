@@ -79,7 +79,8 @@ More documentation is on the
 - **Certificate authorities** — Scripts for a trusted identity, a root CA, and
   an intermediate CA.
 - **Certificates** — ECDSA and RSA certificates for servers and clients, and an
-  ECDSA certificate for localhost with an HAProxy bundle.
+  ECDSA certificate for localhost with an HAProxy bundle. The server and client
+  scripts also run without questions with `--fqdn` (and `--ip` for servers).
 - **Verification** — A script that checks certificates against their chain of
   trust.
 - **Aliases** — A set of Bash aliases for every script in

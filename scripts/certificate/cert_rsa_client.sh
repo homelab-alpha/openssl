@@ -2,8 +2,8 @@
 
 # Script Name: cert_rsa_client.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T16:08:56+01:00
-# Version: 2.5.4
+# Date: 2026-11-08T12:30:00+01:00
+# Version: 2.6.0
 
 # Description:
 # This script automates the creation of an RSA client certificate. It handles
@@ -13,7 +13,14 @@
 # verifies the certificate. It converts the certificate into various formats
 # suitable for different applications.
 
-# Usage: ./cert_rsa_client.sh
+# Usage: ./cert_rsa_client.sh [--fqdn <fqdn>] [-h|--help]
+#
+# Options:
+#  --fqdn <fqdn> Run without questions for this FQDN. The Common Name is
+#                set to the FQDN, so it is not asked a second time.
+#  -h, --help    Show this help.
+#
+# Without options the script asks for the details.
 
 # Notes:
 # - Ensure OpenSSL is installed and configured for the process to work.
@@ -50,7 +57,47 @@ check_success() {
 }
 
 # Certificate information
-read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
+fqdn=""
+non_interactive=false
+
+# Function to parse arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --fqdn)
+      [[ -n "$2" && "$2" =~ ^[A-Za-z0-9*][A-Za-z0-9._*-]*$ && "$2" != *..* ]] || {
+        echo "[ERROR] --fqdn needs a valid FQDN." >&2
+        exit 1
+      }
+      fqdn="$2"
+      non_interactive=true
+      shift 2
+      ;;
+    -h | --help)
+      sed -n '/^# Usage:/,/^# Notes:/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *)
+      echo "[ERROR] Unknown option: $1" >&2
+      exit 1
+      ;;
+    esac
+  done
+}
+
+parse_arguments "$@"
+
+# Ask for the details only when --fqdn is not given
+if [ "$non_interactive" = false ]; then
+  read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
+fi
+
+# In non-interactive mode the Common Name comes from the FQDN, so openssl req
+# does not ask for it again.
+req_subject=()
+if [ "$non_interactive" = true ]; then
+  req_subject=(-subj "/CN=${fqdn}")
+fi
 
 # Define directory paths
 print_section_header "Define directory paths"
@@ -81,14 +128,19 @@ if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; the
   unique_subject="yes"
 fi
 
+# Only valid entries (status V, the first field) count. Revoked and updated
+# (expired) entries do not block a new certificate, just like in openssl ca.
 cn_exists=false
-if grep -q "CN=${fqdn}" "$db_dir/index.txt" 2>/dev/null; then
+if awk -F'\t' -v cn="/CN=${fqdn}" '
+  $1 == "V" && (substr($NF, length($NF) - length(cn) + 1) == cn || index($NF, cn "/")) { found = 1 }
+  END { exit !found }' "$db_dir/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
 # If unique_subject is enabled and Certificate exists, display an error and exit
 if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
-  echo "[ERROR] unique_subject is enabled and CSR with Common Name ${fqdn} already exists in index.txt" >&2
+  echo "[ERROR] unique_subject is enabled and a valid certificate with Common Name ${fqdn} already exists in index.txt." >&2
+  echo "Revoke it, or run 'openssl ca -updatedb' if it has expired, and try again." >&2
   exit 1
 fi
 
@@ -99,7 +151,7 @@ check_success "Failed to generate RSA key"
 
 # Generate Certificate Signing Request (CSR)
 print_section_header "Generate Certificate Signing Request"
-openssl req -new -sha256 -config "$openssl_conf_dir/cert.cnf" -key "$private_certificates_dir/${fqdn}.pem" -out "$csr_dir/${fqdn}.pem"
+openssl req -new -sha256 -config "$openssl_conf_dir/cert.cnf" "${req_subject[@]}" -key "$private_certificates_dir/${fqdn}.pem" -out "$csr_dir/${fqdn}.pem"
 check_success "Failed to generate Certificate Signing Request"
 
 # Create an extfile with all the alternative names

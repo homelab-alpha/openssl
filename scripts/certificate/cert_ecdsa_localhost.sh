@@ -2,8 +2,8 @@
 
 # Script Name: cert_ecdsa_localhost.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T16:09:04+01:00
-# Version: 2.5.4
+# Date: 2026-11-08T12:30:00+01:00
+# Version: 2.5.5
 
 # Description:
 # This script automates the generation of an ECDSA certificate for a
@@ -74,14 +74,19 @@ if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; the
   unique_subject="yes"
 fi
 
+# Only valid entries (status V, the first field) count. Revoked and updated
+# (expired) entries do not block a new certificate, just like in openssl ca.
 cn_exists=false
-if grep -q "CN=${fqdn}" "$db_dir/index.txt" 2>/dev/null; then
+if awk -F'\t' -v cn="/CN=${fqdn}" '
+  $1 == "V" && (substr($NF, length($NF) - length(cn) + 1) == cn || index($NF, cn "/")) { found = 1 }
+  END { exit !found }' "$db_dir/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
 # If unique_subject is enabled and Certificate exists, display an error and exit
 if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
-  echo "[ERROR] unique_subject is enabled and CSR with Common Name ${fqdn} already exists in index.txt" >&2
+  echo "[ERROR] unique_subject is enabled and a valid certificate with Common Name ${fqdn} already exists in index.txt." >&2
+  echo "Revoke it, or run 'openssl ca -updatedb' if it has expired, and try again." >&2
   exit 1
 fi
 
