@@ -73,12 +73,12 @@
 # entries with the same name. Therefore the script sets unique_subject to "no"
 # in $HOME/ssl/db/index.txt.attr during a renewal, marks the old entry in
 # index.txt as revoked with the reason "superseded", and then restores
-# unique_subject. This is a database marking only: the certificates have no CRL
-# distribution point and the script does not create a CRL. The old certificate
-# stays in the archive. When a renewal fails after the new certificate was
-# issued, the new entry is marked in the same way and the old files are
-# restored. If the script cannot repair the database, it leaves unique_subject
-# at "no" and prints a warning.
+# unique_subject. This is a database marking only: the script does not create a
+# CRL. Run revoke_ssl_certificates.sh --crl-only afterwards to put the entry in
+# the CRL. The old certificate stays in the archive. When a renewal fails after
+# the new certificate was issued, the new entry is marked in the same way and
+# the old files are restored. If the script cannot repair the database, it
+# leaves unique_subject at "no" and prints a warning.
 # The script must run with $HOME as the current directory, because the
 # OpenSSL configuration files use HOME = . . The script changes to it itself.
 

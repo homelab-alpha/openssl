@@ -203,7 +203,8 @@ For every renewal the script:
   check fails;
 - marks the old entry in `~/ssl/db/index.txt` as revoked with the reason
   `superseded`, because `openssl ca` cannot hold two valid entries with the same
-  name. This is a database marking only. There is no CRL;
+  name. This is a database marking only. Run `openssl-revoke --crl-only`
+  afterwards to put it in the CRL;
 - runs the executable files in `~/ssl/hooks.d/`.
 
 Good to know:

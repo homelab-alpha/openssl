@@ -399,7 +399,7 @@ if [ "$crl_only" = false ]; then
   revoke_entries || status=1
 fi
 
-# Generate the CRL, also after a partial failure, so the CRL matches the database
+# Generate the CRL, also after a partial failure, so it matches the database
 if [ "$generate_crl" = true ]; then
   create_crl || status=1
 fi
