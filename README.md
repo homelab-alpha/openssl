@@ -83,6 +83,9 @@ More documentation is on the
   scripts also run without questions with `--fqdn` (and `--ip` for servers).
 - **Verification** — A script that checks certificates against their chain of
   trust.
+- **Monitoring and renewal** — A script that reports the expiry of all
+  certificates, and a script that renews server and client certificates before
+  they expire. See [Monitoring and Renewal](#monitoring-and-renewal).
 - **Aliases** — A set of Bash aliases for every script in
   `dotfiles/.bash_aliases`.
 - **Example** — An example directory structure in
@@ -102,6 +105,8 @@ More documentation is on the
 | `scripts/certificate/cert_ecdsa_client.sh`         | Issues an ECDSA client certificate.                                                             | `new-cert-client`          |
 | `scripts/certificate/cert_rsa_client.sh`           | Issues an RSA client certificate.                                                               | `new-cert-rsa-client`      |
 | `scripts/verify_ssl_certificates.sh`               | Verifies certificates against their chain of trust.                                             | `openssl-verify`           |
+| `scripts/ssl_certificate_status.sh`                | Reports the expiry date and the days left of all certificates. Read only.                       | `openssl-status`           |
+| `scripts/renew_ssl_certificates.sh`                | Renews server and client certificates before they expire.                                       | `openssl-renew`            |
 | `scripts/ssl_dotfiles_installer.sh`                | Adds the aliases to `~/.bashrc` when they are not there yet.                                    | —                          |
 
 ### Configuration files
@@ -143,6 +148,144 @@ The installer adds the aliases to `~/.bashrc`. Open a new shell, run
 `new-ssl-directorie-setup` to create the directory structure, and then use the
 other aliases to create the authorities and certificates. Each script describes
 its usage in its header.
+
+## Monitoring and Renewal
+
+The leaf certificates are valid for 366 days. Two scripts help you keep them
+valid. The certificates are for a homelab and for testing, not for production.
+
+### Check the expiry
+
+`openssl-status` lists every certificate under `~/ssl/certs`, including the
+authorities, sorted by the days left. It never changes a file.
+
+```bash
+openssl-status                  # the full list
+openssl-status --warn-days 45   # warn 45 days ahead for server and client certificates
+openssl-status --quiet          # print only what needs attention (for cron or a timer)
+```
+
+Server and client certificates warn 30 days ahead by default, and the
+authorities warn 180 days ahead (`--ca-warn-days`). The exit code tells what
+happened:
+
+| Exit code | Meaning                                                            |
+| :-------- | :----------------------------------------------------------------- |
+| `0`       | Every certificate is valid for longer than its threshold.          |
+| `1`       | At least one certificate expires within its threshold.             |
+| `2`       | At least one certificate has expired.                              |
+| `3`       | An error occurred, for example an unreadable certificate. It wins. |
+
+### Renew certificates
+
+`openssl-renew` renews server and client certificates. It detects RSA or ECDSA
+and server or client from the existing certificate, and it calls the matching
+certificate script without questions.
+
+```bash
+openssl-renew --dry-run www.example.test       # show the plan and exit
+openssl-renew www.example.test                 # show the plan and ask first
+openssl-renew --all --within 30 --yes          # renew everything that expires within 30 days
+openssl-renew --reuse-key www.example.test     # keep the private key
+```
+
+For every renewal the script:
+
+- archives the old key, certificate, and bundles in
+  `~/ssl/archive/<fqdn>/<date>/` first, and never deletes anything;
+- issues the new certificate with the same names, and rebuilds the chain bundle
+  and the HAProxy bundle (mode 600);
+- verifies the chain, the key, and the names, and restores the old files when a
+  check fails;
+- marks the old entry in `~/ssl/db/index.txt` as revoked with the reason
+  `superseded`, because `openssl ca` cannot hold two valid entries with the same
+  name. This is a database marking only. There is no CRL;
+- runs the executable files in `~/ssl/hooks.d/`.
+
+Good to know:
+
+- CA certificates (trusted identity, root, and intermediate) are not renewed.
+  The scripts warn when one expires soon.
+- Only the names that the certificate scripts create are supported (the FQDN,
+  `www.<fqdn>`, and one IPv4 address). A certificate with other names is
+  refused.
+- The CA private keys are not encrypted. A renewal that runs unattended can
+  therefore read the intermediate CA key. Protect `~/ssl/private`.
+- Exit codes: `0` success or nothing to renew, `1` a renewal, check, or hook
+  failed, and `2` wrong usage or a pre-flight error (nothing was changed).
+
+### Hooks
+
+After a successful renewal, every executable file in `~/ssl/hooks.d/` runs with
+the arguments `<fqdn> <certificate> <chain_bundle> <key> <haproxy_bundle>`. The
+HAProxy bundle is empty for client certificates. A file that is not executable
+is skipped, so the example hook is disabled by default:
+
+```bash
+mkdir -p ~/ssl/hooks.d
+cp ~/openssl/examples/hooks.d/reload_haproxy.sh ~/ssl/hooks.d/
+chmod +x ~/ssl/hooks.d/reload_haproxy.sh
+```
+
+### Schedule
+
+Nothing is installed automatically. Pick one of these examples.
+
+A systemd user timer, in `~/.config/systemd/user/`:
+
+```ini
+# ssl-certificate-renewal.service
+[Unit]
+Description=Renew homelab certificates that expire soon
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h
+ExecStart=%h/openssl/scripts/renew_ssl_certificates.sh --all --within 30 --yes
+ExecStartPost=%h/openssl/scripts/ssl_certificate_status.sh --quiet
+```
+
+```ini
+# ssl-certificate-renewal.timer
+[Unit]
+Description=Daily check of the homelab certificates
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now ssl-certificate-renewal.timer
+loginctl enable-linger "$USER"   # run the timer when you are not logged in
+```
+
+The service fails when a renewal fails, or when the status check still finds a
+certificate (for example an authority) that expires soon.
+
+Or a cron job (`crontab -e`):
+
+```cron
+17 3 * * * cd "$HOME" && "$HOME/openssl/scripts/renew_ssl_certificates.sh" --all --within 30 --yes && "$HOME/openssl/scripts/ssl_certificate_status.sh" --quiet
+```
+
+### Check the served certificate
+
+The files can be fine while a service still serves the old certificate, for
+example because it was not reloaded. Check what the service really serves:
+
+```bash
+echo | openssl s_client -connect host.example.test:443 -servername host.example.test 2>/dev/null \
+  | openssl x509 -noout -enddate
+
+# Exit code 1 when the served certificate expires within 30 days
+echo | openssl s_client -connect host.example.test:443 -servername host.example.test 2>/dev/null \
+  | openssl x509 -noout -checkend "$((30 * 86400))"
+```
 
 ## Development
 
@@ -252,6 +395,8 @@ openssl/
 ├── dotfiles/                                   # Bash aliases for the scripts
 │   └── .bash_aliases                           # Aliases for the SSL scripts
 ├── examples/                                   # Example scripts and usage demonstrations
+│   ├── hooks.d/                                # Example hooks for the renewal script
+│   │   └── reload_haproxy.sh                   # Example hook that reloads HAProxy (disabled by default)
 │   └── ssl-directory-structure/                # Example directory structure for certificate management (52 files)
 ├── openssl.cnf/                                # OpenSSL configuration files
 │   ├── ca.cnf                                  # Intermediate certificate authority configuration
@@ -270,6 +415,8 @@ openssl/
 │   │   └── cert_rsa_server.sh                  # Issues an RSA server certificate
 │   ├── intermediate-certificate-authority/     # Intermediate CA script
 │   │   └── ca.sh                               # Creates the intermediate certificate authority and its CA chain bundle
+│   ├── renew_ssl_certificates.sh               # Renews server and client certificates before they expire
+│   ├── ssl_certificate_status.sh               # Reports the expiry date and the days left of all certificates
 │   ├── ssl_directory_setup.sh                  # Sets up the directory structure for certificate management and the OpenSSL configuration files
 │   ├── ssl_dotfiles_installer.sh               # Adds the aliases to `~/.bashrc` when they are not there yet
 │   └── verify_ssl_certificates.sh              # Verifies certificates against their chain of trust
