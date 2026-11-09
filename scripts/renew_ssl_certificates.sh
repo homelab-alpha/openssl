@@ -2,8 +2,8 @@
 
 # Script Name: renew_ssl_certificates.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-08T15:00:00+01:00
-# Version: 1.0.0
+# Date: 2026-11-08T16:30:00+01:00
+# Version: 1.1.0
 
 # Description:
 # This script renews server and client certificates before they expire. It
@@ -26,6 +26,9 @@
 #
 # CA certificates (trusted identity, root, and intermediate) are never renewed.
 # The script prints a warning when a CA certificate expires soon.
+# A certificate that is revoked in $HOME/ssl/db/index.txt (status R) is never
+# renewed. With --all it is skipped. Issue a new certificate for it with the
+# certificate scripts instead.
 
 # Usage: ./renew_ssl_certificates.sh [options] <fqdn>
 #        ./renew_ssl_certificates.sh [options] --all --within <days>
@@ -70,12 +73,12 @@
 # entries with the same name. Therefore the script sets unique_subject to "no"
 # in $HOME/ssl/db/index.txt.attr during a renewal, marks the old entry in
 # index.txt as revoked with the reason "superseded", and then restores
-# unique_subject. This is a database marking only: the certificates have no CRL
-# distribution point and the script does not create a CRL. The old certificate
-# stays in the archive. When a renewal fails after the new certificate was
-# issued, the new entry is marked in the same way and the old files are
-# restored. If the script cannot repair the database, it leaves unique_subject
-# at "no" and prints a warning.
+# unique_subject. This is a database marking only: the script does not create a
+# CRL. Run revoke_ssl_certificates.sh --crl-only afterwards to put the entry in
+# the CRL. The old certificate stays in the archive. When a renewal fails after
+# the new certificate was issued, the new entry is marked in the same way and
+# the old files are restored. If the script cannot repair the database, it
+# leaves unique_subject at "no" and prints a warning.
 # The script must run with $HOME as the current directory, because the
 # OpenSSL configuration files use HOME = . . The script changes to it itself.
 
@@ -278,6 +281,17 @@ get_san() {
   openssl x509 -in "$1" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr -d ' ' | tr ',' '\n' | sort
 }
 
+# Function to check if a certificate is revoked in the database (status R)
+is_revoked() {
+  local serial
+  serial=$(openssl x509 -in "$1" -noout -serial 2>/dev/null)
+  serial="${serial#serial=}"
+  awk -F'\t' -v s="$serial" '
+    function norm(x) { x = toupper(x); sub(/^0+/, "", x); return x }
+    $1 == "R" && norm($4) == norm(s) { found = 1 }
+    END { exit !found }' "$db_dir/index.txt"
+}
+
 # Function to detect the kind of a certificate and add it to the plan
 plan_certificate() {
   local fqdn="$1" cert="$certs_certificates_dir/$1.pem" text algo kind enddate token ips=() ip=""
@@ -290,6 +304,10 @@ plan_certificate() {
     print_error "Cannot read the certificate of $fqdn."
     return 1
   }
+  if is_revoked "$cert"; then
+    print_error "$fqdn is revoked. Issue a new certificate with the certificate scripts."
+    return 1
+  fi
 
   # RSA or ECDSA, from the public key algorithm
   case "$text" in
@@ -374,6 +392,10 @@ select_targets() {
     *_chain_bundle | *_haproxy | *_bundle) continue ;;
     esac
     if openssl x509 -in "$file" -noout -checkend "$((within_days * 86400))" >/dev/null 2>&1; then
+      continue
+    fi
+    # A revoked certificate is not renewed
+    if is_revoked "$file"; then
       continue
     fi
     plan_certificate "$name" || plan_failed=$((plan_failed + 1))
