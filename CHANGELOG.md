@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add the `badges.yml` workflow and `.github/scripts/generate_badges.py` to render the
   README badges, including Super Linter and CodeQL, as SVG files on the `badges`
   branch
+- feat(scripts): add non-interactive mode to certificate scripts [a8bda7f](https://github.com/homelab-alpha/openssl/commit/a8bda7f76b3271dbf4ebf163b787bb7b1b76cb58) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts): add certificate status and renewal [95fb175](https://github.com/homelab-alpha/openssl/commit/95fb175e5e7b0f53ee90e8ca7547fb0822f23394) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts): add certificate revoke script [db99377](https://github.com/homelab-alpha/openssl/commit/db99377a0c64a5beb640bcebae9d14e605906abb) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts): rename ssl to tls, keep old names [7fb49bc](https://github.com/homelab-alpha/openssl/commit/7fb49bc07f27b2eb19e372aa153492962430461d) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Changed
 
@@ -56,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ci(workflows): allow BlueOak-1.0.0 license [6a3a989](https://github.com/homelab-alpha/openssl/commit/6a3a989186f3b96567f8e29bf7db0a6778803446) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(labels): add dependency update labels [0f01004](https://github.com/homelab-alpha/openssl/commit/0f010040f2a4ee1e021323759d545843d61bfccf) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs(readme): reword the maintenance warning [3d65895](https://github.com/homelab-alpha/openssl/commit/3d658957f1bffd04c4dd101f4b1e7887f84cd4ff) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs(readme): remove the OpenSSL 4.x warning [84c0191](https://github.com/homelab-alpha/openssl/commit/84c01919f9ce0f91c9a7fc72a54b2945222023dd) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs(readme): use example.test in the examples [586c6fd](https://github.com/homelab-alpha/openssl/commit/586c6fddc03df17733423daea2784a4c2757f908) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
@@ -76,6 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(scripts): restore pull_request_body.py logic [1c5d608](https://github.com/homelab-alpha/openssl/commit/1c5d6083e24bb87def267a93c3ba6ad0e0bcf357) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(changelog): remove the Unreleased link [98976b1](https://github.com/homelab-alpha/openssl/commit/98976b1c2c43a3b319c52edb67875fb40330fea3) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(openssl): align configs with OpenSSL 4.x [6bd5392](https://github.com/homelab-alpha/openssl/commit/6bd53925b28edd5019311a3cf3a89efee2e72a8c) by [@homelab-alpha](https://github.com/homelab-alpha)
+- fix(examples): make the example hook executable [20b0f46](https://github.com/homelab-alpha/openssl/commit/20b0f46974bed9d80d38273aa8cbd2d2abd8bcd0) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Security
 
