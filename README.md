@@ -224,11 +224,12 @@ Good to know:
 After a successful renewal, every executable file in `~/ssl/hooks.d/` runs with
 the arguments `<fqdn> <certificate> <chain_bundle> <key> <haproxy_bundle>`. The
 HAProxy bundle is empty for client certificates. A file that is not executable
-is skipped, so the example hook is disabled by default:
+is skipped. The example hook is executable in the repository, so copy it with
+`install -m 644` to keep it disabled until you run `chmod +x`:
 
 ```bash
 mkdir -p ~/ssl/hooks.d
-cp ~/openssl/examples/hooks.d/reload_haproxy.sh ~/ssl/hooks.d/
+install -m 644 ~/openssl/examples/hooks.d/reload_haproxy.sh ~/ssl/hooks.d/
 chmod +x ~/ssl/hooks.d/reload_haproxy.sh
 ```
 

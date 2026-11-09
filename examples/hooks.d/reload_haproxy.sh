@@ -2,17 +2,18 @@
 
 # Script Name: reload_haproxy.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-08T15:00:00+01:00
-# Version: 1.0.0
+# Date: 2026-11-09T09:00:00+01:00
+# Version: 1.0.1
 
 # Description:
 # Example hook for renew_ssl_certificates.sh. It reloads HAProxy after a
-# certificate was renewed. The hook is disabled by default, because the file is
-# not executable.
+# certificate was renewed. The hook is disabled by default, because the copy
+# in ~/ssl/hooks.d/ is not executable. The file in the repository is executable
+# (the linter requires that), so copy it with install -m 644, not with cp.
 #
 # To enable it:
 #   mkdir -p ~/ssl/hooks.d
-#   cp ~/openssl/examples/hooks.d/reload_haproxy.sh ~/ssl/hooks.d/
+#   install -m 644 ~/openssl/examples/hooks.d/reload_haproxy.sh ~/ssl/hooks.d/
 #   chmod +x ~/ssl/hooks.d/reload_haproxy.sh
 #
 # Usage: reload_haproxy.sh <fqdn> <certificate> <chain_bundle> <key> <haproxy_bundle>
