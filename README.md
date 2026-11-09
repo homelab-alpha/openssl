@@ -83,7 +83,9 @@ More documentation is on the
   an intermediate CA.
 - **Certificates** — ECDSA and RSA certificates for servers and clients, and an
   ECDSA certificate for localhost with an HAProxy bundle. The server and client
-  scripts also run without questions with `--fqdn` (and `--ip` for servers).
+  scripts also run without questions with `--fqdn` (and `--ip` for servers, with
+  one or more IPv4 addresses separated by commas, such as
+  `--ip 192.168.0.1,192.168.0.2`).
 - **Verification** — A script that checks certificates against their chain of
   trust.
 - **Monitoring and renewal** — A script that reports the expiry of all
@@ -258,8 +260,7 @@ Good to know:
 - CA certificates (trusted identity, root, and intermediate) are not renewed.
   The scripts warn when one expires soon.
 - Only the names that the certificate scripts create are supported (the FQDN,
-  `www.<fqdn>`, and one IPv4 address). A certificate with other names is
-  refused.
+  `www.<fqdn>`, and IPv4 addresses). A certificate with other names is refused.
 - The CA private keys are not encrypted. A renewal that runs unattended can
   therefore read the intermediate CA key. Protect `~/tls/private`.
 - Exit codes: `0` success or nothing to renew, `1` a renewal, check, or hook
