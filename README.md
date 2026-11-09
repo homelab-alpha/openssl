@@ -233,10 +233,10 @@ and server or client from the existing certificate, and it calls the matching
 certificate script without questions.
 
 ```bash
-openssl-renew --dry-run www.example.test       # show the plan and exit
-openssl-renew www.example.test                 # show the plan and ask first
+openssl-renew --dry-run example.test       # show the plan and exit
+openssl-renew example.test                 # show the plan and ask first
 openssl-renew --all --within 30 --yes          # renew everything that expires within 30 days
-openssl-renew --reuse-key www.example.test     # keep the private key
+openssl-renew --reuse-key example.test     # keep the private key
 ```
 
 For every renewal the script:
@@ -348,10 +348,10 @@ private key leaked. It marks the certificate as revoked in the CA database
 CRL with the CA chain before it replaces the previous CRL.
 
 ```bash
-openssl-revoke --dry-run www.example.test                     # show the plan and exit
-openssl-revoke www.example.test                               # show the plan and ask first
-openssl-revoke --reason keyCompromise --yes www.example.test  # no questions
-openssl-revoke --no-crl www.example.test                      # revoke, but skip the CRL
+openssl-revoke --dry-run example.test                     # show the plan and exit
+openssl-revoke example.test                               # show the plan and ask first
+openssl-revoke --reason keyCompromise --yes example.test  # no questions
+openssl-revoke --no-crl example.test                      # revoke, but skip the CRL
 openssl-revoke --crl-only                                     # only generate a new CRL
 ```
 
@@ -382,7 +382,7 @@ Check a certificate against the CRL:
 
 ```bash
 openssl verify -crl_check -CAfile ~/tls/certs/intermediate/ca_chain_bundle.pem \
-  -CRLfile ~/tls/crl/ca_crl.pem ~/tls/certs/certificates/www.example.test.crt
+  -CRLfile ~/tls/crl/ca_crl.pem ~/tls/certs/certificates/example.test.crt
 ```
 
 ## Development
