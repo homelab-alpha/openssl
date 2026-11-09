@@ -2,24 +2,24 @@
 
 ## GitHub Workspace
 
-/github/workspace/examples/ssl-directory-structure/certs/certificates/example.com_haproxy.pem:private-key:32
-/github/workspace/examples/ssl-directory-structure/certs/certificates/localhost_haproxy.pem:private-key:32
-/github/workspace/examples/ssl-directory-structure/private/certificates/example.com.key:private-key:4
-/github/workspace/examples/ssl-directory-structure/private/certificates/example.com.pem:private-key:4
-/github/workspace/examples/ssl-directory-structure/private/certificates/localhost.key:private-key:4
-/github/workspace/examples/ssl-directory-structure/private/certificates/localhost.pem:private-key:4
-/github/workspace/examples/ssl-directory-structure/private/intermediate/ca.pem:private-key:4
-/github/workspace/examples/ssl-directory-structure/private/root/root_ca.pem:private-key:4
-/github/workspace/examples/ssl-directory-structure/private/root/trusted_id.pem:private-key:4
+/github/workspace/examples/tls-directory-structure/certs/certificates/example.com_haproxy.pem:private-key:32
+/github/workspace/examples/tls-directory-structure/certs/certificates/localhost_haproxy.pem:private-key:32
+/github/workspace/examples/tls-directory-structure/private/certificates/example.com.key:private-key:4
+/github/workspace/examples/tls-directory-structure/private/certificates/example.com.pem:private-key:4
+/github/workspace/examples/tls-directory-structure/private/certificates/localhost.key:private-key:4
+/github/workspace/examples/tls-directory-structure/private/certificates/localhost.pem:private-key:4
+/github/workspace/examples/tls-directory-structure/private/intermediate/ca.pem:private-key:4
+/github/workspace/examples/tls-directory-structure/private/root/root_ca.pem:private-key:4
+/github/workspace/examples/tls-directory-structure/private/root/trusted_id.pem:private-key:4
 
 ## Super Linter Local
 
-/tmp/lint/examples/ssl-directory-structure/certs/certificates/example.com_haproxy.pem:private-key:32
-/tmp/lint/examples/ssl-directory-structure/certs/certificates/localhost_haproxy.pem:private-key:32
-/tmp/lint/examples/ssl-directory-structure/private/certificates/example.com.key:private-key:4
-/tmp/lint/examples/ssl-directory-structure/private/certificates/example.com.pem:private-key:4
-/tmp/lint/examples/ssl-directory-structure/private/certificates/localhost.key:private-key:4
-/tmp/lint/examples/ssl-directory-structure/private/certificates/localhost.pem:private-key:4
-/tmp/lint/examples/ssl-directory-structure/private/intermediate/ca.pem:private-key:4
-/tmp/lint/examples/ssl-directory-structure/private/root/root_ca.pem:private-key:4
-/tmp/lint/examples/ssl-directory-structure/private/root/trusted_id.pem:private-key:4
+/tmp/lint/examples/tls-directory-structure/certs/certificates/example.com_haproxy.pem:private-key:32
+/tmp/lint/examples/tls-directory-structure/certs/certificates/localhost_haproxy.pem:private-key:32
+/tmp/lint/examples/tls-directory-structure/private/certificates/example.com.key:private-key:4
+/tmp/lint/examples/tls-directory-structure/private/certificates/example.com.pem:private-key:4
+/tmp/lint/examples/tls-directory-structure/private/certificates/localhost.key:private-key:4
+/tmp/lint/examples/tls-directory-structure/private/certificates/localhost.pem:private-key:4
+/tmp/lint/examples/tls-directory-structure/private/intermediate/ca.pem:private-key:4
+/tmp/lint/examples/tls-directory-structure/private/root/root_ca.pem:private-key:4
+/tmp/lint/examples/tls-directory-structure/private/root/trusted_id.pem:private-key:4

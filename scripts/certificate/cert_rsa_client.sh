@@ -2,8 +2,8 @@
 
 # Script Name: cert_rsa_client.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-08T14:00:00+01:00
-# Version: 2.6.0
+# Date: 2026-11-09T10:00:00+01:00
+# Version: 2.7.0
 
 # Description:
 # This script automates the creation of an RSA client certificate. It handles
@@ -26,7 +26,7 @@
 
 # Notes:
 # - Ensure OpenSSL is installed and configured for the process to work.
-# - The script creates certificate files in the $HOME/ssl directory.
+# - The script creates certificate files in the $HOME/tls directory.
 # - The certificate is generated with the Common Name (CN) specified by the user.
 # - It checks for an existing CN in the index.txt before proceeding.
 # - The final output includes .crt, .key, and .chain_bundle.crt files.
@@ -108,7 +108,12 @@ fi
 
 # Define directory paths
 print_section_header "Define directory paths"
-base_dir="$HOME/ssl"
+# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
+base_dir="$HOME/tls"
+if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
+  base_dir="$HOME/ssl"
+  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
+fi
 certs_dir="$base_dir/certs"
 csr_dir="$base_dir/csr"
 extfile_dir="$base_dir/extfiles"
