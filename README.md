@@ -35,21 +35,29 @@ certificates for a homelab.
    4. [Getting Started](#getting-started)
       1. [Requirements](#requirements)
       2. [Installation](#installation)
-   5. [Development](#development)
-   6. [Project Structure](#project-structure)
-   7. [CI/CD and Automation](#cicd-and-automation)
-      1. [Workflows](#workflows)
-      2. [Linting](#linting)
-      3. [Dependency Management](#dependency-management)
-   8. [Policies and Standards](#policies-and-standards)
-   9. [Working with Claude](#working-with-claude)
-   10. [Known Issues](#known-issues)
+   5. [Migrating from ssl to tls](#migrating-from-ssl-to-tls)
+   6. [Monitoring and Renewal](#monitoring-and-renewal)
+      1. [Check the expiry](#check-the-expiry)
+      2. [Renew certificates](#renew-certificates)
+      3. [Hooks](#hooks)
+      4. [Schedule](#schedule)
+      5. [Check the served certificate](#check-the-served-certificate)
+   7. [Revoke Certificates](#revoke-certificates)
+   8. [Development](#development)
+   9. [Project Structure](#project-structure)
+   10. [CI/CD and Automation](#cicd-and-automation)
+       1. [Workflows](#workflows)
+       2. [Linting](#linting)
+       3. [Dependency Management](#dependency-management)
+   11. [Policies and Standards](#policies-and-standards)
+   12. [Working with Claude](#working-with-claude)
+   13. [Known Issues](#known-issues)
        1. [Currently Being Addressed](#currently-being-addressed)
-   11. [Contributing](#contributing)
-   12. [Support](#support)
-   13. [Security](#security)
-   14. [Roadmap](#roadmap)
-   15. [License](#license)
+   14. [Contributing](#contributing)
+   15. [Support](#support)
+   16. [Security](#security)
+   17. [Roadmap](#roadmap)
+   18. [License](#license)
 
   </p>
 </details>
@@ -59,17 +67,12 @@ certificates for a homelab.
 **openssl** generates self-signed certificates for a homelab. It holds OpenSSL
 configuration files and Bash scripts that create a root certificate authority,
 an intermediate certificate authority, and ECDSA and RSA server, client, and
-localhost certificates, and that verify the result.
+localhost certificates, and that verify, monitor, renew, and revoke them.
 
 > [!WARNING]
 >
 > The certificates are meant for a homelab environment, primarily for testing
 > purposes. Do not use them in production.
-
-> [!WARNING]
->
-> This repository is being updated for OpenSSL 4.x, so parts of it may not work
-> as expected. Check the output before you rely on it.
 
 More documentation is on the
 [Homelab-Alpha documentation site](https://homelab-alpha.nl/openssl/).
@@ -492,7 +495,7 @@ openssl/
 ├── examples/                                   # Example scripts and usage demonstrations
 │   ├── hooks.d/                                # Example hooks for the renewal script
 │   │   └── reload_haproxy.sh                   # Example hook that reloads HAProxy (disabled by default)
-│   └── tls-directory-structure/                # Example directory structure for certificate management (52 files)
+│   └── tls-directory-structure/                # Example directory structure for certificate management (54 files)
 ├── openssl.cnf/                                # OpenSSL configuration files
 │   ├── ca.cnf                                  # Intermediate certificate authority configuration
 │   ├── cert.cnf                                # Certificate configuration
