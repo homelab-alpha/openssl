@@ -92,26 +92,27 @@ More documentation is on the
 - **Aliases** — A set of Bash aliases for every script in
   `dotfiles/.bash_aliases`.
 - **Example** — An example directory structure in
-  `examples/ssl-directory-structure/`.
+  `examples/tls-directory-structure/`.
 
 ### Scripts
 
-| Script                                             | Purpose                                                                                         | Alias                      |
-| :------------------------------------------------- | :---------------------------------------------------------------------------------------------- | :------------------------- |
-| `scripts/ssl_directory_setup.sh`                   | Sets up the directory structure for certificate management and the OpenSSL configuration files. | `new-ssl-directorie-setup` |
-| `scripts/certificate-authority/trusted_id.sh`      | Creates the trusted root certificate (ECDSA) with verification and format conversion.           | `new-trusted-id`           |
-| `scripts/certificate-authority/root_ca.sh`         | Creates the root certificate authority (ECDSA) and its CA chain bundle.                         | `new-root-ca`              |
-| `scripts/intermediate-certificate-authority/ca.sh` | Creates the intermediate certificate authority and its CA chain bundle.                         | `new-ca`                   |
-| `scripts/certificate/cert_ecdsa_localhost.sh`      | Issues an ECDSA certificate for localhost, with a bundle for HAProxy.                           | `new-cert-localhost`       |
-| `scripts/certificate/cert_ecdsa_server.sh`         | Issues an ECDSA server certificate.                                                             | `new-cert-server`          |
-| `scripts/certificate/cert_rsa_server.sh`           | Issues an RSA server certificate.                                                               | `new-cert-rsa-server`      |
-| `scripts/certificate/cert_ecdsa_client.sh`         | Issues an ECDSA client certificate.                                                             | `new-cert-client`          |
-| `scripts/certificate/cert_rsa_client.sh`           | Issues an RSA client certificate.                                                               | `new-cert-rsa-client`      |
-| `scripts/verify_ssl_certificates.sh`               | Verifies certificates against their chain of trust.                                             | `openssl-verify`           |
-| `scripts/ssl_certificate_status.sh`                | Reports the expiry date and the days left of all certificates. Read only.                       | `openssl-status`           |
-| `scripts/renew_ssl_certificates.sh`                | Renews server and client certificates before they expire.                                       | `openssl-renew`            |
-| `scripts/revoke_ssl_certificates.sh`               | Revokes a server or client certificate and generates a CRL.                                     | `openssl-revoke`           |
-| `scripts/ssl_dotfiles_installer.sh`                | Adds the aliases to `~/.bashrc` when they are not there yet.                                    | —                          |
+| Script                                             | Purpose                                                                                         | Alias                     |
+| :------------------------------------------------- | :---------------------------------------------------------------------------------------------- | :------------------------ |
+| `scripts/tls_directory_setup.sh`                   | Sets up the directory structure for certificate management and the OpenSSL configuration files. | `new-tls-directory-setup` |
+| `scripts/certificate-authority/trusted_id.sh`      | Creates the trusted root certificate (ECDSA) with verification and format conversion.           | `new-trusted-id`          |
+| `scripts/certificate-authority/root_ca.sh`         | Creates the root certificate authority (ECDSA) and its CA chain bundle.                         | `new-root-ca`             |
+| `scripts/intermediate-certificate-authority/ca.sh` | Creates the intermediate certificate authority and its CA chain bundle.                         | `new-ca`                  |
+| `scripts/certificate/cert_ecdsa_localhost.sh`      | Issues an ECDSA certificate for localhost, with a bundle for HAProxy.                           | `new-cert-localhost`      |
+| `scripts/certificate/cert_ecdsa_server.sh`         | Issues an ECDSA server certificate.                                                             | `new-cert-server`         |
+| `scripts/certificate/cert_rsa_server.sh`           | Issues an RSA server certificate.                                                               | `new-cert-rsa-server`     |
+| `scripts/certificate/cert_ecdsa_client.sh`         | Issues an ECDSA client certificate.                                                             | `new-cert-client`         |
+| `scripts/certificate/cert_rsa_client.sh`           | Issues an RSA client certificate.                                                               | `new-cert-rsa-client`     |
+| `scripts/verify_tls_certificates.sh`               | Verifies certificates against their chain of trust.                                             | `openssl-verify`          |
+| `scripts/tls_certificate_status.sh`                | Reports the expiry date and the days left of all certificates. Read only.                       | `openssl-status`          |
+| `scripts/renew_tls_certificates.sh`                | Renews server and client certificates before they expire.                                       | `openssl-renew`           |
+| `scripts/revoke_tls_certificates.sh`               | Revokes a server or client certificate and generates a CRL.                                     | `openssl-revoke`          |
+| `scripts/tls_directory_migrate.sh`                 | Moves the old directory `~/ssl` to `~/tls` and leaves a link behind.                            | `openssl-migrate-tls`     |
+| `scripts/tls_dotfiles_installer.sh`                | Adds the aliases to `~/.bashrc` when they are not there yet.                                    | —                         |
 
 ### Configuration files
 
@@ -145,13 +146,55 @@ The aliases expect the repository in `~/openssl`:
 git clone https://github.com/homelab-alpha/openssl.git ~/openssl
 cd ~/openssl
 chmod +x scripts/*.sh scripts/*/*.sh
-./scripts/ssl_dotfiles_installer.sh
+./scripts/tls_dotfiles_installer.sh
 ```
 
 The installer adds the aliases to `~/.bashrc`. Open a new shell, run
-`new-ssl-directorie-setup` to create the directory structure, and then use the
+`new-tls-directory-setup` to create the directory structure, and then use the
 other aliases to create the authorities and certificates. Each script describes
 its usage in its header.
+
+## Migrating from ssl to tls
+
+SSL is the old name of the protocol; TLS replaced it. The directory, the
+scripts, and the aliases are renamed to match. The old names keep working, so
+nothing breaks when you update an existing installation.
+
+| Old                                  | New                                  |
+| :----------------------------------- | :----------------------------------- |
+| `~/ssl`                              | `~/tls`                              |
+| `scripts/ssl_directory_setup.sh`     | `scripts/tls_directory_setup.sh`     |
+| `scripts/ssl_certificate_status.sh`  | `scripts/tls_certificate_status.sh`  |
+| `scripts/renew_ssl_certificates.sh`  | `scripts/renew_tls_certificates.sh`  |
+| `scripts/revoke_ssl_certificates.sh` | `scripts/revoke_tls_certificates.sh` |
+| `scripts/verify_ssl_certificates.sh` | `scripts/verify_tls_certificates.sh` |
+| `scripts/ssl_dotfiles_installer.sh`  | `scripts/tls_dotfiles_installer.sh`  |
+| `new-ssl-directorie-setup`           | `new-tls-directory-setup`            |
+
+What keeps working until you migrate:
+
+- The scripts use `~/ssl` while `~/tls` does not exist, and print a warning on
+  `stderr`.
+- The old script names start the new scripts and print a deprecation warning.
+  The old alias `new-ssl-directorie-setup` does the same.
+- `new-tls-directory-setup` refuses to create a second, empty `~/tls` while
+  `~/ssl` exists.
+
+To move to `~/tls`, run the migration once. It moves `~/ssl` to `~/tls`, leaves
+a link `~/ssl` that points to `tls` (so old paths keep working), and changes the
+path in `~/tls/openssl.cnf/*.cnf`. Every changed file is saved first as
+`<name>.cnf.pre-tls`. No certificate, key, or database file changes.
+
+```bash
+openssl-migrate-tls --dry-run   # show what would happen
+openssl-migrate-tls             # move the directory
+```
+
+The migration stops when both `~/ssl` and `~/tls` exist as directories, and when
+a renewal or revocation is running. Update your own cron jobs, systemd units,
+hooks, and HAProxy or nginx configuration to `~/tls` when you can, and remove
+the link `~/ssl` when nothing uses it. The old script names and the old alias
+are removed in a future major version.
 
 ## Monitoring and Renewal
 
@@ -160,7 +203,7 @@ valid. The certificates are for a homelab and for testing, not for production.
 
 ### Check the expiry
 
-`openssl-status` lists every certificate under `~/ssl/certs`, including the
+`openssl-status` lists every certificate under `~/tls/certs`, including the
 authorities, sorted by the days left. It never changes a file.
 
 ```bash
@@ -196,16 +239,16 @@ openssl-renew --reuse-key www.example.test     # keep the private key
 For every renewal the script:
 
 - archives the old key, certificate, and bundles in
-  `~/ssl/archive/<fqdn>/<date>/` first, and never deletes anything;
+  `~/tls/archive/<fqdn>/<date>/` first, and never deletes anything;
 - issues the new certificate with the same names, and rebuilds the chain bundle
   and the HAProxy bundle (mode 600);
 - verifies the chain, the key, and the names, and restores the old files when a
   check fails;
-- marks the old entry in `~/ssl/db/index.txt` as revoked with the reason
+- marks the old entry in `~/tls/db/index.txt` as revoked with the reason
   `superseded`, because `openssl ca` cannot hold two valid entries with the same
   name. This is a database marking only. Run `openssl-revoke --crl-only`
   afterwards to put it in the CRL;
-- runs the executable files in `~/ssl/hooks.d/`.
+- runs the executable files in `~/tls/hooks.d/`.
 
 Good to know:
 
@@ -215,22 +258,22 @@ Good to know:
   `www.<fqdn>`, and one IPv4 address). A certificate with other names is
   refused.
 - The CA private keys are not encrypted. A renewal that runs unattended can
-  therefore read the intermediate CA key. Protect `~/ssl/private`.
+  therefore read the intermediate CA key. Protect `~/tls/private`.
 - Exit codes: `0` success or nothing to renew, `1` a renewal, check, or hook
   failed, and `2` wrong usage or a pre-flight error (nothing was changed).
 
 ### Hooks
 
-After a successful renewal, every executable file in `~/ssl/hooks.d/` runs with
+After a successful renewal, every executable file in `~/tls/hooks.d/` runs with
 the arguments `<fqdn> <certificate> <chain_bundle> <key> <haproxy_bundle>`. The
 HAProxy bundle is empty for client certificates. A file that is not executable
 is skipped. The example hook is executable in the repository, so copy it with
 `install -m 644` to keep it disabled until you run `chmod +x`:
 
 ```bash
-mkdir -p ~/ssl/hooks.d
-install -m 644 ~/openssl/examples/hooks.d/reload_haproxy.sh ~/ssl/hooks.d/
-chmod +x ~/ssl/hooks.d/reload_haproxy.sh
+mkdir -p ~/tls/hooks.d
+install -m 644 ~/openssl/examples/hooks.d/reload_haproxy.sh ~/tls/hooks.d/
+chmod +x ~/tls/hooks.d/reload_haproxy.sh
 ```
 
 ### Schedule
@@ -240,19 +283,19 @@ Nothing is installed automatically. Pick one of these examples.
 A systemd user timer, in `~/.config/systemd/user/`:
 
 ```ini
-# ssl-certificate-renewal.service
+# tls-certificate-renewal.service
 [Unit]
 Description=Renew homelab certificates that expire soon
 
 [Service]
 Type=oneshot
 WorkingDirectory=%h
-ExecStart=%h/openssl/scripts/renew_ssl_certificates.sh --all --within 30 --yes
-ExecStartPost=%h/openssl/scripts/ssl_certificate_status.sh --quiet
+ExecStart=%h/openssl/scripts/renew_tls_certificates.sh --all --within 30 --yes
+ExecStartPost=%h/openssl/scripts/tls_certificate_status.sh --quiet
 ```
 
 ```ini
-# ssl-certificate-renewal.timer
+# tls-certificate-renewal.timer
 [Unit]
 Description=Daily check of the homelab certificates
 
@@ -266,7 +309,7 @@ WantedBy=timers.target
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now ssl-certificate-renewal.timer
+systemctl --user enable --now tls-certificate-renewal.timer
 loginctl enable-linger "$USER"   # run the timer when you are not logged in
 ```
 
@@ -276,7 +319,7 @@ certificate (for example an authority) that expires soon.
 Or a cron job (`crontab -e`):
 
 ```cron
-17 3 * * * cd "$HOME" && "$HOME/openssl/scripts/renew_ssl_certificates.sh" --all --within 30 --yes && "$HOME/openssl/scripts/ssl_certificate_status.sh" --quiet
+17 3 * * * cd "$HOME" && "$HOME/openssl/scripts/renew_tls_certificates.sh" --all --within 30 --yes && "$HOME/openssl/scripts/tls_certificate_status.sh" --quiet
 ```
 
 ### Check the served certificate
@@ -297,8 +340,8 @@ echo | openssl s_client -connect host.example.test:443 -servername host.example.
 
 `openssl-revoke` revokes a server or client certificate, for example after a
 private key leaked. It marks the certificate as revoked in the CA database
-(`~/ssl/db/index.txt`) and generates a new Certificate Revocation List (CRL) in
-`~/ssl/crl/ca_crl.pem`, signed by the intermediate CA. The script verifies the
+(`~/tls/db/index.txt`) and generates a new Certificate Revocation List (CRL) in
+`~/tls/crl/ca_crl.pem`, signed by the intermediate CA. The script verifies the
 CRL with the CA chain before it replaces the previous CRL.
 
 ```bash
@@ -311,7 +354,7 @@ openssl-revoke --crl-only                                     # only generate a 
 
 The reason is one of `unspecified` (default), `keyCompromise`,
 `affiliationChanged`, `superseded`, and `cessationOfOperation`. The script saves
-a copy of `index.txt` in `~/ssl/archive/_database/` before it changes the
+a copy of `index.txt` in `~/tls/archive/_database/` before it changes the
 database.
 
 Good to know:
@@ -335,8 +378,8 @@ Good to know:
 Check a certificate against the CRL:
 
 ```bash
-openssl verify -crl_check -CAfile ~/ssl/certs/intermediate/ca_chain_bundle.pem \
-  -CRLfile ~/ssl/crl/ca_crl.pem ~/ssl/certs/certificates/www.example.test.crt
+openssl verify -crl_check -CAfile ~/tls/certs/intermediate/ca_chain_bundle.pem \
+  -CRLfile ~/tls/crl/ca_crl.pem ~/tls/certs/certificates/www.example.test.crt
 ```
 
 ## Development
@@ -445,11 +488,11 @@ openssl/
 │   ├── renovate.json                           # Renovate dependency automation
 │   └── super_linter.env                        # Super Linter environment configuration
 ├── dotfiles/                                   # Bash aliases for the scripts
-│   └── .bash_aliases                           # Aliases for the SSL scripts
+│   └── .bash_aliases                           # Aliases for the TLS scripts
 ├── examples/                                   # Example scripts and usage demonstrations
 │   ├── hooks.d/                                # Example hooks for the renewal script
 │   │   └── reload_haproxy.sh                   # Example hook that reloads HAProxy (disabled by default)
-│   └── ssl-directory-structure/                # Example directory structure for certificate management (52 files)
+│   └── tls-directory-structure/                # Example directory structure for certificate management (52 files)
 ├── openssl.cnf/                                # OpenSSL configuration files
 │   ├── ca.cnf                                  # Intermediate certificate authority configuration
 │   ├── cert.cnf                                # Certificate configuration
@@ -467,12 +510,19 @@ openssl/
 │   │   └── cert_rsa_server.sh                  # Issues an RSA server certificate
 │   ├── intermediate-certificate-authority/     # Intermediate CA script
 │   │   └── ca.sh                               # Creates the intermediate certificate authority and its CA chain bundle
-│   ├── renew_ssl_certificates.sh               # Renews server and client certificates before they expire
-│   ├── revoke_ssl_certificates.sh              # Revokes a server or client certificate and generates a CRL
-│   ├── ssl_certificate_status.sh               # Reports the expiry date and the days left of all certificates
-│   ├── ssl_directory_setup.sh                  # Sets up the directory structure for certificate management and the OpenSSL configuration files
-│   ├── ssl_dotfiles_installer.sh               # Adds the aliases to `~/.bashrc` when they are not there yet
-│   └── verify_ssl_certificates.sh              # Verifies certificates against their chain of trust
+│   ├── renew_ssl_certificates.sh               # Deprecated: starts renew_tls_certificates.sh
+│   ├── renew_tls_certificates.sh               # Renews server and client certificates before they expire
+│   ├── revoke_ssl_certificates.sh              # Deprecated: starts revoke_tls_certificates.sh
+│   ├── revoke_tls_certificates.sh              # Revokes a server or client certificate and generates a CRL
+│   ├── ssl_certificate_status.sh               # Deprecated: starts tls_certificate_status.sh
+│   ├── ssl_directory_setup.sh                  # Deprecated: starts tls_directory_setup.sh
+│   ├── ssl_dotfiles_installer.sh               # Deprecated: starts tls_dotfiles_installer.sh
+│   ├── tls_certificate_status.sh               # Reports the expiry date and the days left of all certificates
+│   ├── tls_directory_migrate.sh                # Moves the old directory ~/ssl to ~/tls and leaves a link behind
+│   ├── tls_directory_setup.sh                  # Sets up the directory structure for certificate management and the OpenSSL configuration files
+│   ├── tls_dotfiles_installer.sh               # Adds the aliases to `~/.bashrc` when they are not there yet
+│   ├── verify_ssl_certificates.sh              # Deprecated: starts verify_tls_certificates.sh
+│   └── verify_tls_certificates.sh              # Verifies certificates against their chain of trust
 ├── .editorconfig                               # Editor settings (indent, line endings)
 ├── .gitignore                                  # Git ignore rules
 ├── .gitleaksignore                             # Gitleaks secret scanning allowlist
