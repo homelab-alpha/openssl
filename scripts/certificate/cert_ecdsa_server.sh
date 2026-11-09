@@ -2,8 +2,8 @@
 
 # Script Name: cert_ecdsa_server.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T16:09:00+01:00
-# Version: 2.5.4
+# Date: 2026-11-08T14:00:00+01:00
+# Version: 2.6.0
 
 # Description:
 # This script automates the creation of an ECDSA server certificate. It
@@ -14,7 +14,18 @@
 # prepares a certificate bundle for use with HAProxy and converts the
 # certificate into multiple formats for various applications.
 
-# Usage: ./cert_ecdsa_server.sh
+# Usage: ./cert_ecdsa_server.sh [--fqdn <fqdn> [--ip <ipv4>]] [--reuse-key] [-h|--help]
+#
+# Options:
+#  --fqdn <fqdn> Run without questions for this FQDN. The Common Name is
+#                set to the FQDN, so it is not asked a second time.
+#  --ip <ipv4>   Add this IPv4 address to the subject alternative names.
+#                Only used together with --fqdn.
+#  --reuse-key   Reuse the existing private key of this FQDN instead of
+#                generating a new one. The key must exist.
+#  -h, --help    Show this help.
+#
+# Without options the script asks for the details.
 
 # Notes:
 # - Requires OpenSSL to be installed on the system.
@@ -50,8 +61,68 @@ check_success() {
 }
 
 # Certificate information
-read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
-read -r -p "$(print_cyan "Enter the IPv4 address of the new certificate (syntax: , IP:192.168.x.x): ")" ipv4
+fqdn=""
+ipv4=""
+non_interactive=false
+reuse_key=false
+
+# Function to parse arguments
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --fqdn)
+      [[ -n "$2" && "$2" =~ ^[A-Za-z0-9*][A-Za-z0-9._*-]*$ && "$2" != *..* ]] || {
+        echo "[ERROR] --fqdn needs a valid FQDN." >&2
+        exit 1
+      }
+      fqdn="$2"
+      non_interactive=true
+      shift 2
+      ;;
+    --ip)
+      [[ -n "$2" && "$2" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || {
+        echo "[ERROR] --ip needs an IPv4 address." >&2
+        exit 1
+      }
+      ipv4=", IP:$2"
+      shift 2
+      ;;
+    --reuse-key)
+      reuse_key=true
+      shift
+      ;;
+    -h | --help)
+      sed -n '/^# Usage:/,/^$/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
+      exit 0
+      ;;
+    *)
+      echo "[ERROR] Unknown option: $1" >&2
+      exit 1
+      ;;
+    esac
+  done
+}
+
+parse_arguments "$@"
+
+# --ip is only accepted together with --fqdn
+if [[ -n "$ipv4" && "$non_interactive" == "false" ]]; then
+  echo "[ERROR] --ip can only be used together with --fqdn." >&2
+  exit 1
+fi
+
+# Ask for the details only when --fqdn is not given
+if [ "$non_interactive" = false ]; then
+  read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
+  read -r -p "$(print_cyan "Enter the IPv4 address of the new certificate (syntax: , IP:192.168.x.x): ")" ipv4
+fi
+
+# In non-interactive mode the Common Name comes from the FQDN, so openssl req
+# does not ask for it again.
+req_subject=()
+if [ "$non_interactive" = true ]; then
+  req_subject=(-subj "/CN=${fqdn}")
+fi
 
 # Define directory paths
 print_section_header "Define directory paths"
@@ -82,25 +153,38 @@ if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; the
   unique_subject="yes"
 fi
 
+# Only valid entries (status V, the first field) count. Revoked and updated
+# (expired) entries do not block a new certificate, just like in openssl ca.
 cn_exists=false
-if grep -q "CN=${fqdn}" "$db_dir/index.txt" 2>/dev/null; then
+if awk -F'\t' -v cn="/CN=${fqdn}" '
+  $1 == "V" && (substr($NF, length($NF) - length(cn) + 1) == cn || index($NF, cn "/")) { found = 1 }
+  END { exit !found }' "$db_dir/index.txt" 2>/dev/null; then
   cn_exists=true
 fi
 
 # If unique_subject is enabled and Certificate exists, display an error and exit
 if [[ "$unique_subject" == "yes" && "$cn_exists" == "true" ]]; then
-  echo "[ERROR] unique_subject is enabled and CSR with Common Name ${fqdn} already exists in index.txt" >&2
+  echo "[ERROR] unique_subject is enabled and a valid certificate with Common Name ${fqdn} already exists in index.txt." >&2
+  echo "Revoke it, or run 'openssl ca -updatedb' if it has expired, and try again." >&2
   exit 1
 fi
 
-# Generate ECDSA key
-print_section_header "Generate ECDSA key"
-openssl ecparam -name secp384r1 -genkey -out "$private_certificates_dir/${fqdn}.pem"
-check_success "Failed to generate ECDSA key"
+# Generate ECDSA key, or reuse the existing key with --reuse-key
+if [ "$reuse_key" = true ]; then
+  print_section_header "Reuse existing ECDSA key"
+  if [ ! -f "$private_certificates_dir/${fqdn}.pem" ]; then
+    echo "[ERROR] No existing key found for ${fqdn} to reuse." >&2
+    exit 1
+  fi
+else
+  print_section_header "Generate ECDSA key"
+  openssl ecparam -name secp384r1 -genkey -out "$private_certificates_dir/${fqdn}.pem"
+  check_success "Failed to generate ECDSA key"
+fi
 
 # Generate Certificate Signing Request (CSR)
 print_section_header "Generate Certificate Signing Request"
-openssl req -new -sha384 -config "$openssl_conf_dir/cert.cnf" -key "$private_certificates_dir/${fqdn}.pem" -out "$csr_dir/${fqdn}.pem"
+openssl req -new -sha384 -config "$openssl_conf_dir/cert.cnf" "${req_subject[@]}" -key "$private_certificates_dir/${fqdn}.pem" -out "$csr_dir/${fqdn}.pem"
 check_success "Failed to generate Certificate Signing Request"
 
 # Create an extfile with all the alternative names
