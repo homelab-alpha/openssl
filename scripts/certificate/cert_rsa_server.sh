@@ -3,7 +3,7 @@
 # Script Name: cert_rsa_server.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-09T10:00:00+01:00
-# Version: 2.7.0
+# Version: 2.7.1
 
 # Description:
 # This script automates the creation and management of RSA certificates
@@ -14,13 +14,15 @@
 # like HAProxy. The script also checks the integrity and details of
 # generated keys, CSRs, and certificates.
 
-# Usage: ./cert_rsa_server.sh [--fqdn <fqdn> [--ip <ipv4>]] [--reuse-key] [-h|--help]
+# Usage: ./cert_rsa_server.sh [--fqdn <fqdn> [--ip <ipv4>[,<ipv4>...]]] [--reuse-key] [-h|--help]
 #
 # Options:
 #  --fqdn <fqdn> Run without questions for this FQDN. The Common Name is
 #                set to the FQDN, so it is not asked a second time.
-#  --ip <ipv4>   Add this IPv4 address to the subject alternative names.
-#                Only used together with --fqdn.
+#  --ip <list>   Add one or more IPv4 addresses to the subject alternative
+#                names, separated by commas (for example
+#                192.168.0.1,192.168.0.2). Can be repeated. Only used
+#                together with --fqdn.
 #  --reuse-key   Reuse the existing private key of this FQDN instead of
 #                generating a new one. The key must exist.
 #  -h, --help    Show this help.
@@ -32,7 +34,7 @@
 
 # Notes:
 # Ensure OpenSSL is installed and configured correctly.
-# The script requires valid input for FQDN and IPv4 address.
+# The script requires valid input for FQDN and IPv4 addresses.
 # Generated certificates will be saved in the user's home directory.
 # The script stops on errors and requires successful execution of
 # each step to proceed.
@@ -64,9 +66,35 @@ check_success() {
   fi
 }
 
+# Function to turn a comma-separated list of IPv4 addresses into subject
+# alternative name entries (for example ", IP:192.168.0.1, IP:192.168.0.2").
+# Spaces are ignored and duplicates are removed. Returns 1 for invalid input.
+build_ip_san() {
+  local list="${1// /}" ip octet san="" ips octets
+  local -A seen=()
+  if [[ -z "$list" || "$list" == ,* || "$list" == *, || "$list" == *,,* ]]; then
+    return 1
+  fi
+  IFS=',' read -r -a ips <<<"$list"
+  for ip in "${ips[@]}"; do
+    # Four decimal octets without leading zeros, each between 0 and 255
+    [[ "$ip" =~ ^(0|[1-9][0-9]{0,2})(\.(0|[1-9][0-9]{0,2})){3}$ ]] || return 1
+    IFS='.' read -r -a octets <<<"$ip"
+    for octet in "${octets[@]}"; do
+      ((octet <= 255)) || return 1
+    done
+    if [[ -z "${seen[$ip]:-}" ]]; then
+      seen[$ip]=1
+      san+=", IP:$ip"
+    fi
+  done
+  printf '%s' "$san"
+}
+
 # Certificate information
 fqdn=""
 ipv4=""
+ip_list=""
 non_interactive=false
 reuse_key=false
 
@@ -84,11 +112,11 @@ parse_arguments() {
       shift 2
       ;;
     --ip)
-      [[ -n "$2" && "$2" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || {
-        echo "[ERROR] --ip needs an IPv4 address." >&2
+      [[ -n "${2:-}" ]] || {
+        echo "[ERROR] --ip needs one or more IPv4 addresses, separated by commas." >&2
         exit 1
       }
-      ipv4=", IP:$2"
+      ip_list+="${ip_list:+,}$2"
       shift 2
       ;;
     --reuse-key)
@@ -110,7 +138,7 @@ parse_arguments() {
 parse_arguments "$@"
 
 # --ip is only accepted together with --fqdn
-if [[ -n "$ipv4" && "$non_interactive" == "false" ]]; then
+if [[ -n "$ip_list" && "$non_interactive" == "false" ]]; then
   echo "[ERROR] --ip can only be used together with --fqdn." >&2
   exit 1
 fi
@@ -118,7 +146,16 @@ fi
 # Ask for the details only when --fqdn is not given
 if [ "$non_interactive" = false ]; then
   read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
-  read -r -p "$(print_cyan "Enter the IPv4 address of the new certificate (syntax: , IP:192.168.x.x): ")" ipv4
+  read -r -p "$(print_cyan "Enter the IPv4 addresses of the new certificate, separated by commas (empty for none): ")" ip_list
+fi
+
+# Validate the IPv4 addresses and build the subject alternative name entries
+if [[ -n "${ip_list// /}" ]]; then
+  ipv4=$(build_ip_san "$ip_list") || {
+    echo "[ERROR] Invalid IPv4 address list: ${ip_list}" >&2
+    echo "Use IPv4 addresses without leading zeros, separated by commas (for example 192.168.0.1,192.168.0.2)." >&2
+    exit 1
+  }
 fi
 
 # In non-interactive mode the Common Name comes from the FQDN, so openssl req

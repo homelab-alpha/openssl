@@ -3,7 +3,7 @@
 # Script Name: renew_tls_certificates.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-09T10:00:00+01:00
-# Version: 1.2.0
+# Version: 1.2.1
 
 # Description:
 # This script renews server and client certificates before they expire. It
@@ -66,7 +66,7 @@
 # therefore read the intermediate CA key. Protect $HOME/tls/private.
 # The names of a certificate (subject alternative names) are read from the
 # existing certificate. Only the names that the certificate scripts create
-# (FQDN, www.FQDN, and one IPv4 address) are supported. A certificate with
+# (FQDN, www.FQDN, and IPv4 addresses) are supported. A certificate with
 # other names is refused, because the certificate scripts cannot reproduce it.
 # openssl ca refuses a second valid certificate with the same name while
 # unique_subject is "yes", and it cannot load a database that holds two valid
@@ -356,11 +356,23 @@ plan_certificate() {
         ;;
       esac
     done < <(get_san "$cert")
-    if [ "${#ips[@]}" -gt 1 ] || { [ "${#ips[@]}" -eq 1 ] && [ "$kind" = "client" ]; }; then
-      print_error "$fqdn has IP addresses that the certificate scripts cannot reproduce. Renew it by hand."
-      return 1
+    if [ "${#ips[@]}" -gt 0 ]; then
+      # Only the server scripts add IPv4 addresses, and only IPv4 is supported
+      if [ "$kind" = "client" ]; then
+        print_error "$fqdn has IP addresses that the certificate scripts cannot reproduce. Renew it by hand."
+        return 1
+      fi
+      for token in "${ips[@]}"; do
+        if ! [[ "$token" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+          print_error "$fqdn has an IP address that is not IPv4 ($token). Renew it by hand."
+          return 1
+        fi
+      done
+      ip=$(
+        IFS=,
+        echo "${ips[*]}"
+      )
     fi
-    ip="${ips[0]:-}"
   fi
 
   enddate=$(openssl x509 -in "$cert" -noout -enddate 2>/dev/null)
