@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(scripts): add certificate status and renewal [95fb175](https://github.com/homelab-alpha/openssl/commit/95fb175e5e7b0f53ee90e8ca7547fb0822f23394) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): add certificate revoke script [db99377](https://github.com/homelab-alpha/openssl/commit/db99377a0c64a5beb640bcebae9d14e605906abb) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): rename ssl to tls, keep old names [7fb49bc](https://github.com/homelab-alpha/openssl/commit/7fb49bc07f27b2eb19e372aa153492962430461d) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts): allow multiple IPs in server certs [0c2d90b](https://github.com/homelab-alpha/openssl/commit/0c2d90b17595148459f0eadbaeca71d515b59844) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Changed
 
