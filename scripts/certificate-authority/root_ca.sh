@@ -2,8 +2,8 @@
 
 # Script Name: root_ca.sh
 # Author: GJS (homelab-alpha)
-# Date: 2025-02-20T16:09:08+01:00
-# Version: 2.6.3
+# Date: 2026-11-09T10:00:00+01:00
+# Version: 2.7.0
 
 # Description:
 # This script sets up and manages a Root Certificate Authority (CA). It
@@ -50,7 +50,12 @@ check_success() {
 
 # Define directory paths
 print_section_header "Define directory paths"
-base_dir="$HOME/ssl"
+# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
+base_dir="$HOME/tls"
+if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
+  base_dir="$HOME/ssl"
+  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
+fi
 certs_dir="$base_dir/certs"
 csr_dir="$base_dir/csr"
 private_dir="$base_dir/private"

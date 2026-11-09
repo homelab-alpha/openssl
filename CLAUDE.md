@@ -52,16 +52,22 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
 - `scripts/` creates the authorities and the certificates:
   `certificate-authority/` (trusted identity and root CA),
   `intermediate-certificate-authority/`, and `certificate/` (server, client, and
-  localhost certificates), plus `ssl_directory_setup.sh`,
-  `verify_ssl_certificates.sh`, and `ssl_dotfiles_installer.sh`. The
+  localhost certificates), plus `tls_directory_setup.sh`,
+  `verify_tls_certificates.sh`, and `tls_dotfiles_installer.sh`. The
   configuration files are in `openssl.cnf/`.
 - Script headers use `# Script Name:` and `# Description:`.
+- The name `ssl` is replaced by `tls`. The old names stay for backward
+  compatibility until the next major version: `ssl_*.sh`, `renew_ssl_*.sh`,
+  `revoke_ssl_*.sh`, and `verify_ssl_*.sh` are wrappers that start the `tls`
+  scripts, the scripts use `~/ssl` while `~/tls` does not exist, and
+  `tls_directory_migrate.sh` moves `~/ssl` to `~/tls`. Keep the wrappers and the
+  fallback block in every script in line when you change a script.
 - `dotfiles/.bash_aliases` holds the aliases for the scripts and expects the
   repository in `~/openssl`.
-- `examples/ssl-directory-structure/` holds example keys and certificates.
+- `examples/tls-directory-structure/` holds example keys and certificates.
   Gitleaks reports them, so they are listed in `.gitleaksignore` with the path,
   the rule, and the line number. Update an entry when you change such a file.
-- `ssl_dotfiles_installer.sh` removes the files that are only needed to develop
+- `tls_dotfiles_installer.sh` removes the files that are only needed to develop
   the repository from the clone of the user, such as `.git` and `.github` (which
   holds the tooling, the branding, and the style guide). Keep that list in line
   with the repository.
