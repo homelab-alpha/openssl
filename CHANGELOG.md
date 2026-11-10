@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(scripts): add certificate revoke script [db99377](https://github.com/homelab-alpha/openssl/commit/db99377a0c64a5beb640bcebae9d14e605906abb) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): rename ssl to tls, keep old names [7fb49bc](https://github.com/homelab-alpha/openssl/commit/7fb49bc07f27b2eb19e372aa153492962430461d) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): allow multiple IPs in server certs [0c2d90b](https://github.com/homelab-alpha/openssl/commit/0c2d90b17595148459f0eadbaeca71d515b59844) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts): allow spaces after commas in --ip [715eabb](https://github.com/homelab-alpha/openssl/commit/715eabbea427af9bd2f435e160ff6b5726e0c372) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Changed
 
@@ -63,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs(readme): reword the maintenance warning [3d65895](https://github.com/homelab-alpha/openssl/commit/3d658957f1bffd04c4dd101f4b1e7887f84cd4ff) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs(readme): remove the OpenSSL 4.x warning [84c0191](https://github.com/homelab-alpha/openssl/commit/84c01919f9ce0f91c9a7fc72a54b2945222023dd) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs(readme): use example.test in the examples [586c6fd](https://github.com/homelab-alpha/openssl/commit/586c6fddc03df17733423daea2784a4c2757f908) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs(readme): describe wildcard certificates [ceea135](https://github.com/homelab-alpha/openssl/commit/ceea1355b1c6657bd69098729bc2df10ad89bc89) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
@@ -84,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(changelog): remove the Unreleased link [98976b1](https://github.com/homelab-alpha/openssl/commit/98976b1c2c43a3b319c52edb67875fb40330fea3) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(openssl): align configs with OpenSSL 4.x [6bd5392](https://github.com/homelab-alpha/openssl/commit/6bd53925b28edd5019311a3cf3a89efee2e72a8c) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(examples): make the example hook executable [20b0f46](https://github.com/homelab-alpha/openssl/commit/20b0f46974bed9d80d38273aa8cbd2d2abd8bcd0) by [@homelab-alpha](https://github.com/homelab-alpha)
+- fix(scripts): correct SAN for wildcard certs [b3bfbdf](https://github.com/homelab-alpha/openssl/commit/b3bfbdf852ce77cc8df87d4c45249f782057ceb5) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Security
 
