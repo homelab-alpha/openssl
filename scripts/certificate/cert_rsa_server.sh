@@ -3,7 +3,7 @@
 # Script Name: cert_rsa_server.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-09T10:00:00+01:00
-# Version: 2.7.2
+# Version: 2.7.3
 
 # Description:
 # This script automates the creation and management of RSA certificates
@@ -36,6 +36,10 @@
 # Notes:
 # Ensure OpenSSL is installed and configured correctly.
 # The script requires valid input for FQDN and IPv4 addresses.
+# A certificate covers the FQDN and www.<fqdn>. For a wildcard FQDN, such as
+# *.example.test, it covers the wildcard and the domain itself (example.test),
+# because the wildcard already covers www.example.test and does not cover the
+# domain itself.
 # Generated certificates will be saved in the user's home directory.
 # The script stops on errors and requires successful execution of
 # each step to proceed.
@@ -243,8 +247,15 @@ check_success "Failed to generate Certificate Signing Request"
 
 # Create an extfile with all the alternative names
 print_section_header "Create an extfile with all the alternative names"
+if [[ "$fqdn" == \*.* ]]; then
+  # A wildcard already covers www.<domain>, and www.*.<domain> is not valid.
+  # Add the domain itself instead, because a wildcard does not cover it.
+  san_names="DNS:${fqdn}, DNS:${fqdn#\*.}"
+else
+  san_names="DNS:${fqdn}, DNS:www.${fqdn}"
+fi
 {
-  echo "subjectAltName = DNS:${fqdn}, DNS:www.${fqdn}${ipv4}"
+  echo "subjectAltName = ${san_names}${ipv4}"
   echo "basicConstraints = critical, CA:FALSE"
   echo "keyUsage = critical, digitalSignature"
   echo "extendedKeyUsage = serverAuth"

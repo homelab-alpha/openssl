@@ -260,7 +260,9 @@ Good to know:
 - CA certificates (trusted identity, root, and intermediate) are not renewed.
   The scripts warn when one expires soon.
 - Only the names that the certificate scripts create are supported (the FQDN,
-  `www.<fqdn>`, and IPv4 addresses). A certificate with other names is refused.
+  `www.<fqdn>`, and IPv4 addresses). For a wildcard FQDN such as
+  `*.example.test`, the domain itself (`example.test`) replaces `www.<fqdn>`. A
+  certificate with other names is refused.
 - The CA private keys are not encrypted. A renewal that runs unattended can
   therefore read the intermediate CA key. Protect `~/tls/private`.
 - Exit codes: `0` success or nothing to renew, `1` a renewal, check, or hook

@@ -3,7 +3,7 @@
 # Script Name: cert_ecdsa_server.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-09T10:00:00+01:00
-# Version: 2.7.2
+# Version: 2.7.3
 
 # Description:
 # This script automates the creation of an ECDSA server certificate. It
@@ -35,6 +35,10 @@
 # - Certificates will be stored in directories under the HOME/tls folder.
 # - The script will prompt for the Fully Qualified Domain Name (FQDN) and
 #   the IPv4 addresses of the certificate.
+# - A certificate covers the FQDN and www.<fqdn>. For a wildcard FQDN, such as
+#   *.example.test, it covers the wildcard and the domain itself (example.test),
+#   because the wildcard already covers www.example.test and does not cover the
+#   domain itself.
 
 # Stop script on error
 set -e
@@ -239,8 +243,15 @@ check_success "Failed to generate Certificate Signing Request"
 
 # Create an extfile with all the alternative names
 print_section_header "Create an extfile with all the alternative names"
+if [[ "$fqdn" == \*.* ]]; then
+  # A wildcard already covers www.<domain>, and www.*.<domain> is not valid.
+  # Add the domain itself instead, because a wildcard does not cover it.
+  san_names="DNS:${fqdn}, DNS:${fqdn#\*.}"
+else
+  san_names="DNS:${fqdn}, DNS:www.${fqdn}"
+fi
 {
-  echo "subjectAltName = DNS:${fqdn}, DNS:www.${fqdn}${ipv4}"
+  echo "subjectAltName = ${san_names}${ipv4}"
   echo "basicConstraints = critical, CA:FALSE"
   echo "keyUsage = critical, digitalSignature"
   echo "extendedKeyUsage = serverAuth"
