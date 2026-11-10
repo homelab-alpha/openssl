@@ -3,7 +3,7 @@
 # Script Name: renew_tls_certificates.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-09T10:00:00+01:00
-# Version: 1.2.1
+# Version: 1.2.2
 
 # Description:
 # This script renews server and client certificates before they expire. It
@@ -66,8 +66,9 @@
 # therefore read the intermediate CA key. Protect $HOME/tls/private.
 # The names of a certificate (subject alternative names) are read from the
 # existing certificate. Only the names that the certificate scripts create
-# (FQDN, www.FQDN, and IPv4 addresses) are supported. A certificate with
-# other names is refused, because the certificate scripts cannot reproduce it.
+# (FQDN, www.FQDN, and IPv4 addresses) are supported. For a wildcard FQDN the
+# domain itself replaces www.FQDN. A certificate with other names is refused,
+# because the certificate scripts cannot reproduce it.
 # openssl ca refuses a second valid certificate with the same name while
 # unique_subject is "yes", and it cannot load a database that holds two valid
 # entries with the same name. Therefore the script sets unique_subject to "no"
@@ -299,7 +300,7 @@ is_revoked() {
 
 # Function to detect the kind of a certificate and add it to the plan
 plan_certificate() {
-  local fqdn="$1" cert="$certs_certificates_dir/$1.pem" text algo kind enddate token ips=() ip=""
+  local fqdn="$1" cert="$certs_certificates_dir/$1.pem" text algo kind enddate token ips=() ip="" wildcard_domain=""
 
   if [ ! -f "$cert" ]; then
     print_error "No certificate found for $fqdn in $certs_certificates_dir."
@@ -346,9 +347,14 @@ plan_certificate() {
       return 1
     fi
   else
+    # A wildcard certificate also holds the domain itself (*.example.test and example.test)
+    if [[ "$fqdn" == \*.* ]]; then
+      wildcard_domain="${fqdn#\*.}"
+    fi
     while IFS= read -r token; do
       case "$token" in
       "DNS:$fqdn" | "DNS:www.$fqdn") ;;
+      "DNS:${wildcard_domain:-$fqdn}") ;;
       IPAddress:*) ips+=("${token#IPAddress:}") ;;
       *)
         print_error "$fqdn has other names than the certificate scripts create ($token). Renew it by hand."
