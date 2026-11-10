@@ -3,7 +3,7 @@
 # Script Name: cert_ecdsa_server.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-09T10:00:00+01:00
-# Version: 2.7.1
+# Version: 2.7.2
 
 # Description:
 # This script automates the creation of an ECDSA server certificate. It
@@ -21,8 +21,9 @@
 #                set to the FQDN, so it is not asked a second time.
 #  --ip <list>   Add one or more IPv4 addresses to the subject alternative
 #                names, separated by commas (for example
-#                192.168.0.1,192.168.0.2). Can be repeated. Only used
-#                together with --fqdn.
+#                192.168.0.1,192.168.0.2). A space after a comma is
+#                allowed (192.168.0.1, 192.168.0.2). Can be repeated. Only
+#                used together with --fqdn.
 #  --reuse-key   Reuse the existing private key of this FQDN instead of
 #                generating a new one. The key must exist.
 #  -h, --help    Show this help.
@@ -114,6 +115,13 @@ parse_arguments() {
       }
       ip_list+="${ip_list:+,}$2"
       shift 2
+      # Without quotes, the shell splits "a, b" into separate arguments. Take the
+      # next argument as well when the list so far ends with a comma, or when the
+      # next argument starts with a comma.
+      while [[ $# -gt 0 && "$1" != -* ]] && [[ "$ip_list" == *, || "$1" == ,* ]]; do
+        ip_list+="$1"
+        shift
+      done
       ;;
     --reuse-key)
       reuse_key=true

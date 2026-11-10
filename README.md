@@ -85,7 +85,7 @@ More documentation is on the
   ECDSA certificate for localhost with an HAProxy bundle. The server and client
   scripts also run without questions with `--fqdn` (and `--ip` for servers, with
   one or more IPv4 addresses separated by commas, such as
-  `--ip 192.168.0.1,192.168.0.2`).
+  `--ip 192.168.0.1,192.168.0.2` or `--ip 192.168.0.1, 192.168.0.2`).
 - **Verification** — A script that checks certificates against their chain of
   trust.
 - **Monitoring and renewal** — A script that reports the expiry of all
