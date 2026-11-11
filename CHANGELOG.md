@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs(readme): remove the OpenSSL 4.x warning [84c0191](https://github.com/homelab-alpha/openssl/commit/84c01919f9ce0f91c9a7fc72a54b2945222023dd) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs(readme): use example.test in the examples [586c6fd](https://github.com/homelab-alpha/openssl/commit/586c6fddc03df17733423daea2784a4c2757f908) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs(readme): describe wildcard certificates [ceea135](https://github.com/homelab-alpha/openssl/commit/ceea1355b1c6657bd69098729bc2df10ad89bc89) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(renovate): remove default assignees [8d8f2d3](https://github.com/homelab-alpha/openssl/commit/8d8f2d32623daa6749ad1f26b7edaadb790d06ef) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
