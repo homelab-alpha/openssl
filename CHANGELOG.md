@@ -66,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs(readme): use example.test in the examples [586c6fd](https://github.com/homelab-alpha/openssl/commit/586c6fddc03df17733423daea2784a4c2757f908) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs(readme): describe wildcard certificates [ceea135](https://github.com/homelab-alpha/openssl/commit/ceea1355b1c6657bd69098729bc2df10ad89bc89) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(renovate): remove default assignees [8d8f2d3](https://github.com/homelab-alpha/openssl/commit/8d8f2d32623daa6749ad1f26b7edaadb790d06ef) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(renovate): group and automerge updates [a5832a1](https://github.com/homelab-alpha/openssl/commit/a5832a1a77bf248cb6710d35416ca884cdafc720) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
@@ -88,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(openssl): align configs with OpenSSL 4.x [6bd5392](https://github.com/homelab-alpha/openssl/commit/6bd53925b28edd5019311a3cf3a89efee2e72a8c) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(examples): make the example hook executable [20b0f46](https://github.com/homelab-alpha/openssl/commit/20b0f46974bed9d80d38273aa8cbd2d2abd8bcd0) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(scripts): correct SAN for wildcard certs [b3bfbdf](https://github.com/homelab-alpha/openssl/commit/b3bfbdf852ce77cc8df87d4c45249f782057ceb5) by [@homelab-alpha](https://github.com/homelab-alpha)
+- fix(workflow): do not draft Renovate PRs [b8fbe70](https://github.com/homelab-alpha/openssl/commit/b8fbe70de1674ddf9733461bcf1d75c90e6b8563) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Security
 
