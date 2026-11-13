@@ -90,11 +90,12 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
   `scripts/lib/common.sh`.
 - `dotfiles/.bash_aliases` holds the aliases for the scripts and expects the
   repository in `~/openssl`.
-- `examples/tls-directory-structure/` holds example keys and certificates.
-  Gitleaks reports them, so they are listed in `.gitleaksignore` with the path,
-  the rule, and the line number. Update an entry when you change such a file.
-  Create the folder again with the scripts when the layout changes, with the
-  passphrase `example-passphrase`.
+- `examples/tls-directory-structure/` shows the layout of `~/tls`. Its key and
+  certificate files are placeholders with a warning text, not real keys or
+  certificates. Never replace them with the output of the scripts, and never
+  commit a real key or certificate, also not a test key. Gitleaks reports the
+  placeholders by their header line, so they are listed in `.gitleaksignore`
+  with the path, the rule, and the line number.
 - `tls_dotfiles_installer.sh` only adds the aliases to `~/.bashrc`. It does not
   remove or change any other file.
 - The documentation site shows the scripts (repository `homelab-alpha/docs`,

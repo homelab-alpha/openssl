@@ -3,20 +3,19 @@
 This folder shows what the scripts create. It is documentation, not a working
 setup.
 
-> [!WARNING]
+> [!NOTE]
 >
-> The private keys in `tls-directory-structure/` are public: everyone can read
-> them in this repository. Never install the example certificates in a trust
-> store, and never use the example keys or certificates for a service. Create
-> your own authorities with the scripts in `scripts/`.
+> The key and certificate files in `tls-directory-structure/` are placeholders.
+> They hold a warning text, not a real key or certificate, so they cannot be
+> used. Create your own authorities and certificates with the scripts in
+> `scripts/`.
 
 | Folder                     | Content                                                 |
 | :------------------------- | :------------------------------------------------------ |
 | `hooks.d/`                 | Example hook for `renew_tls_certificates.sh`.           |
 | `tls-directory-structure/` | Example of the directory `~/tls` after the scripts ran. |
 
-The example files were made with an earlier version of the scripts. The current
+The folder shows the layout of an earlier version of the scripts. The current
 scripts create the same structure, with some differences: the configuration
-files use `$ENV::HOME`, every authority has its own database (`db/trusted_id/`
-and `db/root_ca/`), and the keys of the trusted identity and the root CA are
-encrypted with a passphrase.
+files use `$ENV::HOME`, and every authority has its own database
+(`db/trusted_id/` and `db/root_ca/`).
