@@ -50,6 +50,10 @@ ca_warn_days=180
 quiet=false
 
 # Define directory paths
+# Stop script on error. The functions below return a status on purpose, and
+# the callers decide what a failure means.
+set -Eeuo pipefail
+
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 3
 set_base_dir
@@ -74,7 +78,7 @@ parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
     --warn-days)
-      is_number "$2" || {
+      is_number "${2:-}" || {
         print_error "--warn-days needs a number of days."
         exit 3
       }
@@ -82,7 +86,7 @@ parse_arguments() {
       shift 2
       ;;
     --ca-warn-days)
-      is_number "$2" || {
+      is_number "${2:-}" || {
         print_error "--ca-warn-days needs a number of days."
         exit 3
       }

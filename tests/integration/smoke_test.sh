@@ -473,10 +473,49 @@ expect 2 "revocation stops without the passphrase" bash "$scripts_dir/revoke_tls
 check "nothing was created without the passphrase" test ! -e "$encrypted/private/certificates/enc2.example.test.pem"
 export HOME="$first_home"
 
+echo "=== Old directory name and migration ==="
+# A setup from before the rename: the folder is ~/ssl and the configuration
+# files name it
+export HOME="$test_root/home_ssl"
+mkdir -p "$HOME"
+expect 0 "setup for the old directory name" bash "$scripts_dir/tls_directory_setup.sh"
+mv "$HOME/tls" "$HOME/ssl"
+sed -i 's#HOME/tls#HOME/ssl#g' "$HOME"/ssl/openssl.cnf/*.cnf
+expect 1 "setup refuses a second directory next to ~/ssl" bash "$scripts_dir/tls_directory_setup.sh"
+expect 0 "trusted identity in ~/ssl" bash "$scripts_dir/certificate-authority/trusted_id.sh"
+expect 0 "root CA in ~/ssl" bash "$scripts_dir/certificate-authority/root_ca.sh"
+expect 0 "intermediate CA in ~/ssl" bash "$scripts_dir/intermediate-certificate-authority/ca.sh"
+expect 0 "certificate in ~/ssl" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" --fqdn old.example.test
+check "the old directory is used" test -f "$HOME/ssl/certs/certificates/old.example.test.pem"
+expect 0 "status in ~/ssl" bash "$scripts_dir/tls_certificate_status.sh"
+expect 0 "migration dry run" bash "$scripts_dir/tls_directory_migrate.sh" --dry-run
+check "dry run moves nothing" test -d "$HOME/ssl" -a ! -e "$HOME/tls"
+expect 0 "migration" bash "$scripts_dir/tls_directory_migrate.sh"
+check "the directory is moved" test -f "$HOME/tls/certs/certificates/old.example.test.pem"
+check "the old name is a link" test -L "$HOME/ssl"
+check "the configuration files name the new directory" bash -c "! grep -q 'HOME/ssl' '$HOME'/tls/openssl.cnf/*.cnf"
+check "a copy of the configuration files is saved" test -f "$HOME/tls/openssl.cnf/cert.cnf.pre-tls"
+expect 0 "migration a second time does nothing" bash "$scripts_dir/tls_directory_migrate.sh"
+expect 0 "certificate after the migration" bash "$scripts_dir/certificate/cert_ecdsa_client.sh" --fqdn moved.example.test
+expect 0 "renewal after the migration" bash "$scripts_dir/renew_tls_certificates.sh" --yes old.example.test
+expect 0 "verify after the migration" bash "$scripts_dir/verify_tls_certificates.sh" old.example.test
+expect 2 "migration rejects an unknown option" bash "$scripts_dir/tls_directory_migrate.sh" --unknown
+export HOME="$first_home"
+
+echo "=== Empty input ==="
+expect 2 "certificate script reports an empty FQDN" bash -c "bash '$scripts_dir/certificate/cert_ecdsa_client.sh' </dev/null"
+expect 2 "verify reports an empty name" bash -c "bash '$scripts_dir/verify_tls_certificates.sh' </dev/null"
+expect 2 "renewal reports a missing value" bash "$scripts_dir/renew_tls_certificates.sh" --all --within
+expect 3 "status reports a missing value" bash "$scripts_dir/tls_certificate_status.sh" --warn-days
+expect 2 "revocation reports a missing value" bash "$scripts_dir/revoke_tls_certificates.sh" --reason
+
 echo "=== Old script names ==="
 expect 0 "ssl_certificate_status.sh starts the new script" bash "$scripts_dir/ssl_certificate_status.sh"
 
 echo "=== Installer ==="
+expect 0 "installer shows its help" bash "$scripts_dir/tls_dotfiles_installer.sh" --help
+check "installer help changes nothing" test ! -s "$HOME/.bashrc"
+expect 2 "installer rejects an unknown option" bash "$scripts_dir/tls_dotfiles_installer.sh" --unknown
 expect 0 "installer adds the aliases" bash "$scripts_dir/tls_dotfiles_installer.sh"
 expect 0 "installer runs a second time" bash "$scripts_dir/tls_dotfiles_installer.sh"
 check "aliases are added once" test "$(grep -c 'dotfiles/.bash_aliases" ]; then' "$HOME/.bashrc")" = "1"

@@ -10,9 +10,12 @@
 # duplication by checking for existing entries and only appends the content if
 # it's missing. The script does not remove or change any other file.
 
-# Usage:
-# No options or arguments required.
-# Run the script to append content to ~/.bashrc.
+# Usage: ./tls_dotfiles_installer.sh [-h|--help]
+#
+# Options:
+#  -h, --help  Show this help.
+#
+# Without options the script appends the aliases to ~/.bashrc.
 
 # Notes:
 # - Ensure the content to be added is properly formatted to avoid conflicts
@@ -22,6 +25,19 @@
 
 # Stop script on error
 set -Eeuo pipefail
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  -h | --help)
+    sed -n '/^# Usage:/,/^$/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
+    exit 0
+    ;;
+  *)
+    echo "Error: Unknown option: $1" >&2
+    exit 2
+    ;;
+  esac
+done
 
 # Define the paths to the files
 bashrc_path="$HOME/.bashrc"

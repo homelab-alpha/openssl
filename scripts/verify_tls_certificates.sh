@@ -37,6 +37,10 @@
 #  1  One or more checks failed, or a file was not found.
 #  2  Wrong usage.
 
+# Stop script on error. The functions below return a status on purpose, and
+# the callers decide what a failure means.
+set -Eeuo pipefail
+
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 
@@ -112,7 +116,7 @@ parse_arguments() {
 
   # If no file name is provided, prompt the user for it
   if [[ -z "$file_name" ]]; then
-    read -r -p "Enter the name of the certificate to verify: " file_name
+    read -r -p "Enter the name of the certificate to verify: " file_name || true
   fi
   if [[ -z "$file_name" || "$file_name" == */* ]]; then
     print_error "'$file_name' is not a certificate name."

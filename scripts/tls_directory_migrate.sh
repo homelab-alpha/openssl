@@ -30,6 +30,10 @@
 # The certificates are for a homelab and for testing.
 # Remove the symbolic link $HOME/ssl yourself when nothing uses the old path.
 
+# Stop script on error. The functions below return a status on purpose, and
+# the callers decide what a failure means.
+set -Eeuo pipefail
+
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 

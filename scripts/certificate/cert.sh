@@ -242,9 +242,10 @@ require_openssl 2
 
 # Ask for the details only when --fqdn is not given
 if [[ "$localhost" == "false" && "$non_interactive" == "false" ]]; then
-  read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn
+  # Without input (end of file) the checks below report the empty value
+  read -r -p "$(print_cyan "Enter the FQDN name of the new certificate: ")" fqdn || true
   if [[ "$role" == "server" ]]; then
-    read -r -p "$(print_cyan "Enter the IPv4 addresses of the new certificate, separated by commas (empty for none): ")" ip_list
+    read -r -p "$(print_cyan "Enter the IPv4 addresses of the new certificate, separated by commas (empty for none): ")" ip_list || true
   fi
 fi
 

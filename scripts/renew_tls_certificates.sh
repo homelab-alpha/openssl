@@ -84,6 +84,10 @@
 # The script changes to $HOME, because configuration files that were copied
 # to $HOME/tls/openssl.cnf before version 0.2.0 use HOME = . .
 
+# Stop script on error. The functions below return a status on purpose, and
+# the callers decide what a failure means.
+set -Eeuo pipefail
+
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 
@@ -147,7 +151,7 @@ parse_arguments() {
       shift
       ;;
     --within)
-      is_number "$2" || {
+      is_number "${2:-}" || {
         print_error "--within needs a number of days."
         exit 2
       }
@@ -274,7 +278,8 @@ warn_ca_certificates() {
 
 # Function to get the normalized subject alternative names of a certificate
 get_san() {
-  openssl x509 -in "$1" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr -d ' ' | tr ',' '\n' | sort
+  # A certificate without names gives an empty list, not an error
+  openssl x509 -in "$1" -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr -d ' ' | tr ',' '\n' | sort || true
 }
 
 # Function to check if a certificate is revoked in the database (status R)
