@@ -36,8 +36,9 @@ certificates for a homelab.
       1. [Requirements](#requirements)
       2. [Installation](#installation)
       3. [Passphrases of the authority keys](#passphrases-of-the-authority-keys)
-      4. [Name constraints (optional)](#name-constraints-optional)
-      5. [Upgrading from an older version](#upgrading-from-an-older-version)
+      4. [Replace an authority](#replace-an-authority)
+      5. [Name constraints (optional)](#name-constraints-optional)
+      6. [Upgrading from an older version](#upgrading-from-an-older-version)
    5. [Migrating from ssl to tls](#migrating-from-ssl-to-tls)
    6. [Monitoring and Renewal](#monitoring-and-renewal)
       1. [Check the expiry](#check-the-expiry)
@@ -46,6 +47,7 @@ certificates for a homelab.
       4. [Schedule](#schedule)
       5. [Check the served certificate](#check-the-served-certificate)
    7. [Revoke Certificates](#revoke-certificates)
+      1. [Revoke an authority](#revoke-an-authority)
    8. [Development](#development)
    9. [Project Structure](#project-structure)
    10. [CI/CD and Automation](#cicd-and-automation)
@@ -121,7 +123,7 @@ More documentation is on the
 | `scripts/verify_tls_certificates.sh`               | Verifies certificates against their chain of trust.                                             | `openssl-verify`          |
 | `scripts/tls_certificate_status.sh`                | Reports the expiry date and the days left of all certificates. Read only.                       | `openssl-status`          |
 | `scripts/renew_tls_certificates.sh`                | Renews server and client certificates before they expire.                                       | `openssl-renew`           |
-| `scripts/revoke_tls_certificates.sh`               | Revokes a server or client certificate and generates a CRL.                                     | `openssl-revoke`          |
+| `scripts/revoke_tls_certificates.sh`               | Revokes a certificate or an authority and generates a CRL.                                      | `openssl-revoke`          |
 | `scripts/tls_directory_migrate.sh`                 | Moves the old directory `~/ssl` to `~/tls` and leaves a link behind.                            | `openssl-migrate-tls`     |
 | `scripts/tls_dotfiles_installer.sh`                | Adds the aliases to `~/.bashrc` when they are not there yet.                                    | —                         |
 | `scripts/lib/common.sh`                            | Shared functions. The other scripts load it; it is not a program.                               | —                         |
@@ -181,11 +183,24 @@ without them the keys cannot sign a new authority. Use `--no-passphrase` to
 create a key that is not encrypted.
 
 The key of the intermediate CA is not encrypted, because the certificate scripts
-and the renewal use it at every run. Use `new-ca --passphrase` to encrypt it; an
-unattended renewal is then not possible. Protect `~/tls/private`.
+and the renewal use it at every run. Use `new-ca --passphrase` to encrypt it.
+The scripts then ask for the passphrase, or read it from `TLS_CA_PASSPHRASE`; an
+unattended renewal needs that variable. Protect `~/tls/private`.
 
-When an authority is created again, the old key and certificate are copied to
-`~/tls/archive/_ca/` first.
+### Replace an authority
+
+An existing authority is never changed by accident. To create one again, for
+example before the intermediate CA expires, use `--replace`:
+
+```bash
+new-ca --replace          # shows a warning and asks first
+new-ca --replace --yes    # no questions
+```
+
+`new-root-ca` and `new-trusted-id` have the same options. The script copies the
+old key and certificate to `~/tls/archive/_ca/` first, issues the new
+certificate, and marks the old database entry as superseded. The authorities and
+certificates below a replaced authority must be created again.
 
 ### Name constraints (optional)
 
@@ -230,7 +245,18 @@ new-ca      --name-constraints "DNS:example.test, DNS:localhost, IP:192.168.0.0/
   CA gets a passphrase.
 - A client certificate holds only its FQDN. Use `--www` to add `www.<fqdn>`. The
   renewal keeps the names of an existing certificate.
-- `openssl-verify` exits with `1` when a check fails.
+- `openssl-verify` exits with `1` when a check fails. It also checks that every
+  bundle holds a complete chain, and that the key in a HAProxy bundle belongs to
+  the certificate.
+- An existing authority is only created again with `--replace`. Editing
+  `index.txt.attr` by hand is no longer needed.
+- The Common Name is always the FQDN. Without `--fqdn` the certificate scripts
+  ask for the FQDN only.
+- A client certificate no longer has the extended key usage `emailProtection`.
+- The certificate scripts, the renewal, and the revocation share one lock, so
+  two scripts cannot change a database at the same time.
+- `new-tls-directory-setup` warns when `~/tls/private` has a wider mode
+  than 700. Use `--fix-permissions` to change it.
 - The installer no longer removes files from the clone.
 
 ## Migrating from ssl to tls
@@ -332,7 +358,7 @@ For every renewal the script:
 Good to know:
 
 - CA certificates (trusted identity, root, and intermediate) are not renewed.
-  The scripts warn when one expires soon.
+  The scripts warn when one expires soon. Create a new one with `--replace`.
 - Only the names that the certificate scripts create are supported (the FQDN,
   `www.<fqdn>`, and IPv4 addresses). For a wildcard FQDN such as
   `*.example.test`, the domain itself (`example.test`) replaces `www.<fqdn>`. A
@@ -429,7 +455,7 @@ openssl-revoke --dry-run example.test                     # show the plan and ex
 openssl-revoke example.test                               # show the plan and ask first
 openssl-revoke --reason keyCompromise --yes example.test  # no questions
 openssl-revoke --no-crl example.test                      # revoke, but skip the CRL
-openssl-revoke --crl-only                                     # only generate a new CRL
+openssl-revoke --crl-only                                 # only generate a new CRL
 ```
 
 The reason is one of `unspecified` (default), `keyCompromise`,
@@ -444,7 +470,9 @@ Good to know:
 - A revoked certificate shows as `REVOKED` in `openssl-status`, and does not
   count for its exit code. `openssl-renew` refuses it. Issue a new certificate
   with the certificate scripts instead.
-- CA certificates (trusted identity, root, and intermediate) are not revoked.
+- When the key that signs is encrypted, the script asks for the passphrase, or
+  reads it from `TLS_CA_PASSPHRASE`, `TLS_ROOT_CA_PASSPHRASE`, or
+  `TLS_TRUSTED_ID_PASSPHRASE`.
 - The certificates have no CRL distribution point. Clients do not find the CRL
   by themselves. Install `ca_crl.pem` where it is used, for example in the
   configuration of HAProxy or nginx.
@@ -454,6 +482,28 @@ Good to know:
   `superseded`. Run `--crl-only` afterwards to put those entries in the CRL.
 - Exit codes: `0` success, `1` a revocation, the CRL, or a check failed, and `2`
   wrong usage or a pre-flight error (nothing was changed).
+
+### Revoke an authority
+
+With `--authority` the script revokes the certificate of an authority, in the
+database of the authority that signed it, and generates the CRL of that signer:
+
+| Option                | Revokes             | Signed by            | CRL                            |
+| :-------------------- | :------------------ | :------------------- | :----------------------------- |
+| `--authority ca`      | the intermediate CA | the root CA          | `~/tls/crl/root_crl.pem`       |
+| `--authority root_ca` | the root CA         | the trusted identity | `~/tls/crl/trusted_id_crl.pem` |
+
+```bash
+openssl-revoke --dry-run --authority ca               # show the plan and exit
+openssl-revoke --reason caCompromise --authority ca   # revoke the intermediate CA
+openssl-revoke --crl-only --authority ca              # only generate the CRL of the root CA
+```
+
+Clients that use the CRL then refuse every certificate below the revoked
+authority. Create the authority again with `--replace`, and then the
+certificates below it. The CRL of the root CA is valid for 90 days, and the CRL
+of the trusted identity for 365 days. The trusted identity signs itself and
+cannot be revoked: remove it from the trust stores instead.
 
 Check a certificate against the CRL:
 
@@ -582,7 +632,7 @@ openssl/
 ├── examples/                                   # Example scripts and usage demonstrations
 │   ├── hooks.d/                                # Example hooks for the renewal script
 │   │   └── reload_haproxy.sh                   # Example hook that reloads HAProxy (disabled by default)
-│   └── tls-directory-structure/                # Example directory structure for certificate management (54 files)
+│   └── tls-directory-structure/                # Example directory structure for certificate management (71 files)
 ├── openssl.cnf/                                # OpenSSL configuration files
 │   ├── ca.cnf                                  # Intermediate certificate authority configuration
 │   ├── cert.cnf                                # Certificate configuration

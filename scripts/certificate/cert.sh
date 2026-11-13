@@ -23,8 +23,7 @@
 # Options:
 #  --algo <ecdsa|rsa>     The key type: ECDSA (secp384r1) or RSA (4096 bits).
 #  --role <server|client> The kind of certificate.
-#  --fqdn <fqdn>          Run without questions for this FQDN. The Common Name
-#                         is set to the FQDN.
+#  --fqdn <fqdn>          Run without questions for this FQDN.
 #  --ip <list>            Server only. Add one or more IPv4 addresses to the
 #                         subject alternative names, separated by commas (for
 #                         example 192.168.0.1,192.168.0.2). A space after a
@@ -35,8 +34,8 @@
 #                         this name.
 #  --localhost            Create the certificate for localhost (localhost,
 #                         *.localhost, and 127.0.0.1). Server only.
-#  --non-interactive      Used with --localhost. Set the Common Name to
-#                         localhost, so openssl req does not ask for it.
+#  --non-interactive      Used with --localhost. Kept for older commands: the
+#                         localhost certificate never asks a question.
 #  --reuse-key            Reuse the existing private key of this FQDN instead
 #                         of generating a new one. The key must exist.
 #  -h, --help             Show this help.
@@ -57,9 +56,13 @@
 #   does not cover the domain itself.
 # - The serial number is random (openssl ca -rand_serial). The script does not
 #   change db/serial or db/crlnumber.
-# - When the script fails after the certificate was issued, the database keeps
-#   an entry for a certificate that is not in use. Revoke it with
-#   revoke_tls_certificates.sh.
+# - When the script fails after the certificate was issued, it marks the new
+#   database entry as revoked, so the next run is not blocked.
+# - The Common Name is always the FQDN.
+# - When the key of the intermediate CA is encrypted, the script asks for the
+#   passphrase, or reads it from the environment variable TLS_CA_PASSPHRASE.
+# - The script waits up to two minutes for another certificate script, a
+#   renewal, or a revocation that uses the database.
 
 # Stop script on error
 set -Eeuo pipefail
@@ -93,6 +96,16 @@ build_ip_san() {
 # Function to remove the temporary folder. It runs from the EXIT trap.
 # shellcheck disable=SC2329
 cleanup() {
+  # A certificate that was issued but not put in place must not stay valid in
+  # the database: it would block the next run for this FQDN.
+  if [[ "$issued" == "true" && "$installed" == "false" ]]; then
+    if TLS_CA_PASSPHRASE_VALUE="$ca_passphrase" openssl ca -config "$config_file" ${ca_options[@]+"${ca_options[@]}"} \
+      -revoke "$new_cert" -crl_reason cessationOfOperation >/dev/null 2>&1; then
+      print_warning "The script failed after the certificate was issued. Its database entry is marked as revoked."
+    else
+      print_warning "The script failed after the certificate was issued, and its database entry could not be revoked. Revoke it with revoke_tls_certificates.sh."
+    fi
+  fi
   if [[ -n "$work_dir" && -d "$work_dir" ]]; then
     rm -rf "$work_dir"
   fi
@@ -109,6 +122,10 @@ localhost=false
 non_interactive=false
 reuse_key=false
 work_dir=""
+issued=false
+installed=false
+ca_passphrase=""
+ca_options=()
 
 # Function to parse arguments
 parse_arguments() {
@@ -250,12 +267,9 @@ if [[ -n "${ip_list// /}" ]]; then
   }
 fi
 
-# In non-interactive mode the Common Name comes from the FQDN, so openssl req
-# does not ask for it.
-req_subject=()
-if [[ "$non_interactive" == "true" ]]; then
-  req_subject=(-subj "/CN=${fqdn}")
-fi
+# The Common Name is always the FQDN, so openssl req does not ask for it and
+# the database entry, the file names, and the names in the certificate agree.
+req_subject=(-subj "/CN=${fqdn}")
 
 # Define directory paths
 print_section_header "Define directory paths"
@@ -289,6 +303,16 @@ for dir in "$certs_certificates_dir" "$private_certificates_dir" "$csr_dir" "$ex
   fi
 done
 [[ "$missing" == "false" ]] || exit 2
+
+# The key of the intermediate CA can be encrypted (ca.sh --passphrase)
+ca_options=()
+if key_is_encrypted "$private_dir/intermediate/ca.pem"; then
+  get_passphrase ca_passphrase TLS_CA_PASSPHRASE "intermediate CA key" || exit 2
+  ca_options=(-passin env:TLS_CA_PASSPHRASE_VALUE)
+fi
+
+# Two scripts must not change the database at the same time
+acquire_lock 2 120 "Another certificate script is still running. Try again later."
 
 # Only valid entries (status V, the first field) count. Revoked and updated
 # (expired) entries do not block a new certificate, just like in openssl ca.
@@ -368,7 +392,7 @@ chmod 600 "$new_key"
 print_section_header "Generate Certificate Signing Request"
 digest="sha384"
 [[ "$algo" == "ecdsa" ]] || digest="sha256"
-openssl req -new "-$digest" -config "$config_file" ${req_subject[@]+"${req_subject[@]}"} -key "$new_key" -out "$new_csr"
+openssl req -new "-$digest" -config "$config_file" "${req_subject[@]}" -key "$new_key" -out "$new_csr"
 
 # Create an extfile with all the alternative names
 print_section_header "Create an extfile with all the alternative names"
@@ -376,7 +400,7 @@ if [[ "$role" == "server" ]]; then
   extended_key_usage="serverAuth"
   comment="OpenSSL Generated Server Certificate"
 else
-  extended_key_usage="clientAuth, emailProtection"
+  extended_key_usage="clientAuth"
   comment="OpenSSL Generated Client Certificate"
 fi
 {
@@ -389,7 +413,9 @@ fi
 
 # Generate Certificate
 print_section_header "Generate Certificate"
-openssl ca -config "$config_file" -rand_serial -notext -batch -in "$new_csr" -out "$new_cert" -extfile "$new_extfile"
+TLS_CA_PASSPHRASE_VALUE="$ca_passphrase" openssl ca -config "$config_file" ${ca_options[@]+"${ca_options[@]}"} \
+  -rand_serial -notext -batch -in "$new_csr" -out "$new_cert" -extfile "$new_extfile"
+issued=true
 
 # Create Certificate Chain Bundle
 print_section_header "Create Certificate Chain Bundle"
@@ -410,23 +436,29 @@ if [[ "$(openssl x509 -in "$new_cert" -noout -pubkey)" != "$(openssl pkey -in "$
 fi
 echo "The certificate matches the private key."
 
-# Put the files in place. The key goes first, with mode 600.
+# Put the files in place. All files are copied next to their target first and
+# then renamed, so a failure does not leave a mix of old and new files.
 print_section_header "Install the files"
+install_list=(
+  "$new_key" "$private_certificates_dir/${fqdn}.key"
+  "$new_csr" "$csr_dir/${fqdn}.pem"
+  "$new_extfile" "$extfile_dir/${fqdn}.cnf"
+  "$new_cert" "$certs_certificates_dir/${fqdn}.pem"
+  "$new_cert" "$certs_certificates_dir/${fqdn}.crt"
+  "$new_chain" "$certs_certificates_dir/${fqdn}_chain_bundle.pem"
+  "$new_chain" "$certs_certificates_dir/${fqdn}_chain_bundle.crt"
+)
 if [[ "$reuse_key" == "false" ]]; then
-  mv -f "$new_key" "$key_file"
+  install_list+=("$new_key" "$key_file")
 fi
-cp -pf "$key_file" "$private_certificates_dir/${fqdn}.key"
-chmod 600 "$key_file" "$private_certificates_dir/${fqdn}.key"
 if [[ "$role" == "server" ]]; then
-  mv -f "$new_haproxy" "$certs_certificates_dir/${fqdn}_haproxy.pem"
-  chmod 600 "$certs_certificates_dir/${fqdn}_haproxy.pem"
+  install_list+=("$new_haproxy" "$certs_certificates_dir/${fqdn}_haproxy.pem")
 fi
-cp -f "$new_csr" "$csr_dir/${fqdn}.pem"
-cp -f "$new_extfile" "$extfile_dir/${fqdn}.cnf"
-cp -f "$new_cert" "$certs_certificates_dir/${fqdn}.pem"
-cp -f "$new_cert" "$certs_certificates_dir/${fqdn}.crt"
-cp -f "$new_chain" "$certs_certificates_dir/${fqdn}_chain_bundle.pem"
-cp -f "$new_chain" "$certs_certificates_dir/${fqdn}_chain_bundle.crt"
+install_files "${install_list[@]}" || {
+  print_error "Cannot put the new files in place. The existing files were not changed."
+  exit 1
+}
+installed=true
 echo
 print_cyan "--> ${fqdn}.pem and ${fqdn}.crt"
 print_cyan "--> ${fqdn}_chain_bundle.pem and ${fqdn}_chain_bundle.crt"

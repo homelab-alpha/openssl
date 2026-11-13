@@ -120,6 +120,56 @@ parse_arguments() {
   fi
 }
 
+# Function to check that a bundle holds a complete chain: the certificate is
+# verified with only the trusted identity as trust anchor and the certificates
+# of the bundle as the chain in between. openssl verify on the bundle itself
+# would only look at its first certificate.
+verify_bundle() {
+  local title="$1" cert_path="$2" bundle_path="$3" anchor="$certs_root_dir/trusted_id.pem" result status=0 file
+
+  print_section_header "$title"
+  for file in "$cert_path" "$bundle_path" "$anchor"; do
+    if [[ ! -f "$file" ]]; then
+      echo -e "$file: \033[31m[FAIL] - File not found\033[0m"
+      failures=$((failures + 1))
+      return
+    fi
+  done
+
+  result=$(openssl verify -CAfile "$anchor" -untrusted "$bundle_path" "$cert_path" 2>&1) || status=$?
+  # The bundle must start with the certificate itself
+  if [[ "$status" -eq 0 ]] && [[ "$(openssl x509 -in "$bundle_path" -noout -fingerprint -sha256 2>/dev/null)" != \
+  "$(openssl x509 -in "$cert_path" -noout -fingerprint -sha256 2>/dev/null)" ]]; then
+    status=1
+    result="The bundle does not start with the certificate."
+  fi
+
+  if [[ "$status" -eq 0 ]]; then
+    echo -e "$bundle_path: \033[32m[PASS]\033[0m"
+  else
+    echo -e "$bundle_path: \033[31m[FAIL]\033[0m"
+    failures=$((failures + 1))
+  fi
+  if [[ "$verbose" == "true" || "$status" -ne 0 ]]; then
+    echo "$result"
+  fi
+}
+
+# Function to check that the private key in a HAProxy bundle belongs to the
+# certificate
+verify_bundle_key() {
+  local title="$1" cert_path="$2" bundle_path="$3"
+
+  print_section_header "$title"
+  if [[ "$(openssl pkey -in "$bundle_path" -pubout 2>/dev/null)" == "$(openssl x509 -in "$cert_path" -noout -pubkey 2>/dev/null)" ]]; then
+    echo -e "$bundle_path: \033[32m[PASS]\033[0m"
+  else
+    echo -e "$bundle_path: \033[31m[FAIL]\033[0m"
+    echo "The private key in the bundle does not match the certificate, or the bundle cannot be read."
+    failures=$((failures + 1))
+  fi
+}
+
 # Functions to verify each level of the chain
 verify_trusted_id() {
   verify_certificate "Verify Trusted Identity against Trusted Identity" \
@@ -129,27 +179,29 @@ verify_trusted_id() {
 verify_root_ca() {
   verify_certificate "Verify Root Certificate Authority against Trusted Identity" \
     "$certs_root_dir/root_ca.pem" "$certs_root_dir/trusted_id.pem"
-  verify_certificate "Verify Root Certificate Authority Chain against Trusted Identity" \
-    "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_root_dir/trusted_id.pem"
+  verify_bundle "Verify the chain in the Root Certificate Authority Chain Bundle" \
+    "$certs_root_dir/root_ca.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
 }
 
 verify_intermediate_ca() {
   verify_certificate "Verify Intermediate Certificate Authority against the Root Certificate Authority" \
     "$certs_intermediate_dir/ca.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
-  verify_certificate "Verify Intermediate Certificate Authority Chain against the Root Certificate Authority Chain" \
-    "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
+  verify_bundle "Verify the chain in the Intermediate Certificate Authority Chain Bundle" \
+    "$certs_intermediate_dir/ca.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
 }
 
 verify_leaf() {
   local name="$1"
   verify_certificate "Verify Certificate against the Intermediate Certificate Chain" \
     "$certs_certificates_dir/${name}.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
-  verify_certificate "Verify Certificate Chain against the Intermediate Certificate Chain" \
-    "$certs_certificates_dir/${name}_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
+  verify_bundle "Verify the chain in the Certificate Chain Bundle" \
+    "$certs_certificates_dir/${name}.pem" "$certs_certificates_dir/${name}_chain_bundle.pem"
   # Only server certificates have a HAProxy bundle
   if [[ -f "$certs_certificates_dir/${name}_haproxy.pem" ]]; then
-    verify_certificate "Verify Haproxy Certificate Chain against the Intermediate Certificate Chain" \
-      "$certs_certificates_dir/${name}_haproxy.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
+    verify_bundle "Verify the chain in the HAProxy Bundle" \
+      "$certs_certificates_dir/${name}.pem" "$certs_certificates_dir/${name}_haproxy.pem"
+    verify_bundle_key "Verify the private key in the HAProxy Bundle" \
+      "$certs_certificates_dir/${name}.pem" "$certs_certificates_dir/${name}_haproxy.pem"
   fi
 }
 

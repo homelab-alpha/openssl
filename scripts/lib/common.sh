@@ -15,7 +15,8 @@
 # Usage: source "<path to scripts>/lib/common.sh"
 
 # Notes:
-# - The file sets no shell options and runs no command when it is loaded.
+# - The file sets no shell options and runs no command when it is loaded. It
+#   only sets the state variables of allow_second_entry.
 # - The certificates are for a homelab and for testing.
 
 # Function to print text in cyan color
@@ -268,4 +269,104 @@ name_is_permitted() {
     fi
   done < <(permitted_names "$2")
   [[ "$limited" == "false" ]]
+}
+
+# Function to take the lock of the TLS folder, so two scripts do not change a
+# database at the same time. A script that already holds the lock starts
+# another script with TLS_LOCK_HELD=1, and that script then skips this step.
+# Usage: acquire_lock <exit code> <seconds to wait, 0 for none> <error message>
+acquire_lock() {
+  local code="${1:-1}" wait="${2:-0}" message="${3:-Another certificate script is running.}"
+  [[ "${TLS_LOCK_HELD:-}" != "1" ]] || return 0
+  if ! command -v flock >/dev/null 2>&1; then
+    print_warning "flock is not installed, so overlapping runs are not prevented."
+    return 0
+  fi
+  exec 9>"$base_dir/.renew.lock"
+  if [[ "$wait" -gt 0 ]]; then
+    flock -w "$wait" 9 && return 0
+  else
+    flock -n 9 && return 0
+  fi
+  print_error "$message"
+  exit "$code"
+}
+
+# Function to put new files in place. Every file is first copied next to its
+# target, with the mode of the source. Only when all copies succeeded they are
+# renamed, and an interrupt is ignored during that step. So a failed copy, a
+# full disk, or Ctrl+C never leaves a mix of old and new files.
+# Usage: install_files <source> <target> [<source> <target>]...
+install_files() {
+  local -a staged=() targets=()
+  local source target i status=0 saved_traps
+  while [[ $# -gt 1 ]]; do
+    source="$1"
+    target="$2"
+    shift 2
+    if ! cp -pf "$source" "$target.new.$$"; then
+      rm -f "$target.new.$$" ${staged[@]+"${staged[@]}"}
+      return 1
+    fi
+    staged+=("$target.new.$$")
+    targets+=("$target")
+  done
+  saved_traps=$(trap -p INT TERM)
+  trap '' INT TERM
+  for i in "${!staged[@]}"; do
+    mv -f "${staged[$i]}" "${targets[$i]}" || status=1
+  done
+  eval "$saved_traps"
+  return "$status"
+}
+
+# Function to check that no subject has more than one valid entry in a
+# database (index.txt). OpenSSL cannot load a database with such entries while
+# unique_subject is "yes".
+database_is_unique() {
+  [[ -z "$(awk -F'\t' '$1 == "V" { if (seen[$NF]++) print $NF }' "$1")" ]]
+}
+
+# Function to check if the certificate in $2 has a valid entry (status V) in
+# the database in $1
+entry_is_valid() {
+  local serial
+  serial=$(openssl x509 -in "$2" -noout -serial 2>/dev/null) || return 1
+  awk -F'\t' -v s="${serial#serial=}" '
+    function norm(x) { x = toupper(x); sub(/^0+/, "", x); return x }
+    $1 == "V" && norm($4) == norm(s) { found = 1 }
+    END { exit !found }' "$1"
+}
+
+# State of allow_second_entry
+second_entry_attr=""
+second_entry_original=""
+second_entry_existed=false
+
+# Function to set unique_subject to "no" in the attribute file of a database
+# (index.txt.attr), so an authority can be issued again while its old entry is
+# still valid. restore_second_entry puts the file back.
+allow_second_entry() {
+  second_entry_attr="$1"
+  second_entry_existed=false
+  if [[ -f "$1" ]]; then
+    second_entry_existed=true
+    second_entry_original=$(cat "$1")
+  fi
+  echo "unique_subject = no" >"$1"
+}
+
+# Function to restore the attribute file that allow_second_entry changed. The
+# file stays at "no" while the database holds two valid entries with the same
+# name, because OpenSSL cannot load such a database with "yes".
+restore_second_entry() {
+  [[ -n "$second_entry_attr" ]] || return 0
+  if ! database_is_unique "${second_entry_attr%.attr}"; then
+    print_warning "${second_entry_attr%.attr} has valid entries with the same name. unique_subject stays 'no' in $second_entry_attr. Revoke the extra entry and set it back to 'yes'."
+  elif [[ "$second_entry_existed" == "true" ]]; then
+    printf '%s\n' "$second_entry_original" >"$second_entry_attr"
+  else
+    rm -f "$second_entry_attr"
+  fi
+  second_entry_attr=""
 }

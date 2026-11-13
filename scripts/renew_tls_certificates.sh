@@ -3,7 +3,7 @@
 # Script Name: renew_tls_certificates.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-13T10:00:00+01:00
-# Version: 1.3.0
+# Version: 1.4.0
 
 # Description:
 # This script renews server and client certificates before they expire. It
@@ -62,8 +62,9 @@
 
 # Notes:
 # The certificates are for a homelab and for testing.
-# The CA private keys are not encrypted. A renewal that runs unattended can
-# therefore read the intermediate CA key. Protect $HOME/tls/private.
+# The key of the intermediate CA is not encrypted by default. A renewal that
+# runs unattended can therefore read it. Protect $HOME/tls/private. When the
+# key is encrypted (ca.sh --passphrase), set TLS_CA_PASSPHRASE.
 # The names of a certificate (subject alternative names) are read from the
 # existing certificate. Only the names that the certificate scripts create
 # (FQDN, www.FQDN, and IPv4 addresses) are supported. For a wildcard FQDN the
@@ -97,7 +98,6 @@ certs_certificates_dir="$certs_dir/certificates"
 private_certificates_dir="$private_dir/certificates"
 hooks_dir="$base_dir/hooks.d"
 archive_root="$base_dir/archive"
-lock_file="$base_dir/.renew.lock"
 attr_file="$db_dir/index.txt.attr"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 certificate_script_dir="$script_dir/certificate"
@@ -126,6 +126,7 @@ renewed=0
 failed=0
 renewal_in_progress=""
 renewal_old_serial=""
+ca_options=()
 
 # Function to show the help text
 show_help() {
@@ -239,6 +240,17 @@ preflight() {
     fi
   done
   [ "$missing" = false ] || exit 2
+
+  # An encrypted key of the intermediate CA needs its passphrase in the
+  # environment: the certificate scripts run without a terminal.
+  if key_is_encrypted "$private_dir/intermediate/ca.pem"; then
+    if [ -z "${TLS_CA_PASSPHRASE:-}" ]; then
+      print_error "The key of the intermediate CA is encrypted. Set TLS_CA_PASSPHRASE to renew."
+      exit 2
+    fi
+    export TLS_CA_PASSPHRASE
+    ca_options=(-passin env:TLS_CA_PASSPHRASE)
+  fi
 
   # The intermediate CA must still be usable
   if ! openssl x509 -in "$certs_intermediate_dir/ca.pem" -noout -checkend 0 >/dev/null 2>&1; then
@@ -431,11 +443,6 @@ list_valid_serials() {
     "$db_dir/index.txt"
 }
 
-# Function to check that no subject has more than one valid entry
-database_is_unique() {
-  [ -z "$(awk -F'\t' '$1 == "V" { if (seen[$NF]++) print $NF }' "$db_dir/index.txt")" ]
-}
-
 # Function to mark all valid entries of an FQDN, except one, as superseded
 supersede_entries() {
   local fqdn="$1" keep status=0 serial
@@ -443,8 +450,8 @@ supersede_entries() {
   while IFS= read -r serial; do
     [ -n "$serial" ] || continue
     [ "$(normalize_serial "$serial")" != "$keep" ] || continue
-    if ! openssl ca -config "$base_dir/openssl.cnf/cert.cnf" -revoke "$base_dir/newcerts/$serial.pem" \
-      -crl_reason superseded >>"$log" 2>&1; then
+    if ! openssl ca -config "$base_dir/openssl.cnf/cert.cnf" ${ca_options[@]+"${ca_options[@]}"} \
+      -revoke "$base_dir/newcerts/$serial.pem" -crl_reason superseded >>"$log" 2>&1; then
       print_error "Cannot mark database entry $serial of $fqdn as superseded."
       status=1
     fi
@@ -466,7 +473,7 @@ disable_unique_subject() {
 # Function to restore index.txt.attr to its original content
 restore_unique_subject() {
   [ "$attr_changed" = true ] || return 0
-  if ! database_is_unique; then
+  if ! database_is_unique "$db_dir/index.txt"; then
     print_warning "index.txt has valid entries with the same name. unique_subject stays 'no' in $attr_file. Revoke or remove the extra entries and set it back to 'yes'."
     attr_changed=false
     return 0
@@ -614,7 +621,7 @@ renew_certificate() {
   fi
   [ "$reuse_key" = false ] || args+=(--reuse-key)
 
-  if bash "$script" "${args[@]}" </dev/null >"$log" 2>&1 9>&- && check_renewal "$fqdn" "$old_serial" "$old_san"; then
+  if TLS_LOCK_HELD=1 bash "$script" "${args[@]}" </dev/null >"$log" 2>&1 && check_renewal "$fqdn" "$old_serial" "$old_san"; then
     # From here the new certificate is in use, so an interrupt must not restore
     # the old files.
     renewal_in_progress=""
@@ -655,26 +662,14 @@ on_interrupt() {
   exit 1
 }
 
-# Function to prevent two renewals at the same time. The lock is taken before
-# the plan is made, so the plan matches the database. The scripts and hooks
-# that this script starts do not inherit the lock (9>&-), so a hook cannot
-# keep it.
-acquire_lock() {
-  if command -v flock >/dev/null 2>&1; then
-    exec 9>"$lock_file"
-    flock -n 9 || {
-      print_error "Another renewal is running."
-      exit 2
-    }
-  else
-    print_warning "flock is not installed, so overlapping renewals are not prevented."
-  fi
-}
-
 # Main process
 parse_arguments "$@"
 preflight
-[ "$dry_run" = true ] || acquire_lock
+# Prevent two renewals at the same time. The lock is taken before the plan is
+# made, so the plan matches the database. The certificate scripts that this
+# script starts skip the lock (TLS_LOCK_HELD=1), and the hooks do not inherit
+# it (9>&-), so a hook cannot keep it.
+[ "$dry_run" = true ] || acquire_lock 2 0 "Another renewal or certificate script is running."
 select_targets
 warn_ca_certificates
 

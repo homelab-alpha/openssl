@@ -14,14 +14,14 @@
 # Usage: ./cert_rsa_client.sh [--fqdn <fqdn>] [--www] [--reuse-key] [-h|--help]
 #
 # Options:
-#  --fqdn <fqdn> Run without questions for this FQDN. The Common Name is
-#                set to the FQDN, so it is not asked a second time.
+#  --fqdn <fqdn> Run without questions for this FQDN.
 #  --www         Also add www.<fqdn> to the subject alternative names.
 #  --reuse-key   Reuse the existing private key of this FQDN instead of
 #                generating a new one. The key must exist.
 #  -h, --help    Show this help.
 #
-# Without options the script asks for the details.
+# Without --fqdn the script asks for the details. The Common Name is always
+# the FQDN.
 
 # Notes:
 # - The certificates are for a homelab and for testing.

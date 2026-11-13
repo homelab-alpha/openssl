@@ -25,12 +25,16 @@
 # entries of the root CA and the intermediate CA to their own database. A copy
 # of index.txt is saved first in $HOME/tls/archive/_database/.
 
-# Usage: ./tls_directory_setup.sh [--update-config] [-h|--help]
+# Usage: ./tls_directory_setup.sh [--update-config] [--fix-permissions] [-h|--help]
 #
 # Options:
 #  --update-config  Replace the configuration files in $HOME/tls/openssl.cnf
 #                   that differ from the repository. Each replaced file is
 #                   saved first with the extension .bak-<date>.
+#  --fix-permissions
+#                   Set mode 700 on existing folders for private keys. Without
+#                   this option the script only warns about a wider mode,
+#                   because a service can depend on it.
 #  -h, --help       Show this help.
 
 # Notes:
@@ -47,10 +51,15 @@ set -Eeuo pipefail
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh"
 
 update_config=false
+fix_permissions=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
   --update-config)
     update_config=true
+    shift
+    ;;
+  --fix-permissions)
+    fix_permissions=true
     shift
     ;;
   -h | --help)
@@ -141,6 +150,13 @@ for dir in "$private_dir" "$tsa_dir/private"; do
   if [[ ! -d "$dir" ]]; then
     mkdir -p "$dir"
     chmod 700 "$dir"
+  elif [[ "$(stat -c %a "$dir")" != "700" ]]; then
+    if [[ "$fix_permissions" == "true" ]]; then
+      chmod 700 "$dir"
+      echo "Changed: $dir now has mode 700"
+    else
+      print_warning "$dir has mode $(stat -c %a "$dir"), so other users can list it. Use --fix-permissions to set mode 700."
+    fi
   fi
 done
 mkdir -p "$certs_dir"/{root,intermediate,certificates} \

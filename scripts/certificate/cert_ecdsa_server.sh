@@ -15,8 +15,7 @@
 # Usage: ./cert_ecdsa_server.sh [--fqdn <fqdn> [--ip <ipv4>[,<ipv4>...]]] [--reuse-key] [-h|--help]
 #
 # Options:
-#  --fqdn <fqdn> Run without questions for this FQDN. The Common Name is
-#                set to the FQDN, so it is not asked a second time.
+#  --fqdn <fqdn> Run without questions for this FQDN.
 #  --ip <list>   Add one or more IPv4 addresses to the subject alternative
 #                names, separated by commas (for example
 #                192.168.0.1,192.168.0.2). A space after a comma is
@@ -26,7 +25,8 @@
 #                generating a new one. The key must exist.
 #  -h, --help    Show this help.
 #
-# Without options the script asks for the details.
+# Without --fqdn the script asks for the details. The Common Name is always
+# the FQDN.
 
 # Notes:
 # - The certificates are for a homelab and for testing.

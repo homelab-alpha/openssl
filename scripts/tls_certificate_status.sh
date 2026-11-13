@@ -3,7 +3,7 @@
 # Script Name: tls_certificate_status.sh
 # Author: GJS (homelab-alpha)
 # Date: 2026-11-13T10:00:00+01:00
-# Version: 1.1.0
+# Version: 1.3.0
 
 # Description:
 # This script reports the expiry status of all certificates under

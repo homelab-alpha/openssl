@@ -154,6 +154,11 @@ check "second run keeps the serial file" test "$(cat "$tls/db/serial")" = "$seri
 expect 0 "setup --update-config replaces the file" bash "$scripts_dir/tls_directory_setup.sh" --update-config
 check "--update-config restores the repository file" cmp -s "$repo_dir/openssl.cnf/cert.cnf" "$tls/openssl.cnf/cert.cnf"
 check "--update-config saves the old file" bash -c "ls '$tls'/openssl.cnf/cert.cnf.bak-* >/dev/null"
+chmod 755 "$tls/private"
+expect 0 "setup warns about a wider mode" bash "$scripts_dir/tls_directory_setup.sh"
+check "setup does not change the mode by itself" test "$(mode_of "$tls/private")" = "755"
+expect 0 "setup --fix-permissions" bash "$scripts_dir/tls_directory_setup.sh" --fix-permissions
+check "--fix-permissions sets mode 700" test "$(mode_of "$tls/private")" = "700"
 expect 2 "setup rejects an unknown option" bash "$scripts_dir/tls_directory_setup.sh" --unknown
 
 echo "=== Certificate authorities ==="
@@ -167,8 +172,10 @@ check "intermediate CA key is not encrypted" bash -c "! grep -q ENCRYPTED '$tls/
 check "root CA is in the database of the trusted identity" test "$(entries_of "$tls/db/trusted_id/index.txt")" = "1"
 check "intermediate CA is in the database of the root CA" test "$(entries_of "$tls/db/root_ca/index.txt")" = "1"
 check "no authority is in the database of the certificates" test "$(entries_of "$tls/db/index.txt")" = "0"
-expect 2 "root CA is not overwritten while unique_subject is yes" bash "$scripts_dir/certificate-authority/root_ca.sh"
-expect 2 "trusted identity is not overwritten while unique_subject is yes" \
+expect 2 "intermediate CA is not overwritten without --replace" \
+  bash "$scripts_dir/intermediate-certificate-authority/ca.sh"
+expect 2 "root CA is not overwritten without --replace" bash "$scripts_dir/certificate-authority/root_ca.sh"
+expect 2 "trusted identity is not overwritten without --replace" \
   bash "$scripts_dir/certificate-authority/trusted_id.sh"
 
 echo "=== Certificates ==="
@@ -219,6 +226,42 @@ check "no file was written outside the tls folder" bash -c "! find '$HOME' -name
 check "no key without a name was written" test ! -e "$tls/private/certificates/.pem"
 check "no temporary folder is left" bash -c "! find '$tls' -maxdepth 1 -name '.cert.*' | grep -q ."
 
+# A failure after the certificate was issued: a wrapper makes openssl verify fail
+mkdir -p "$test_root/shim"
+real_openssl=$(command -v openssl)
+# shellcheck disable=SC2016
+printf '#!/bin/bash\n[[ "$1" != "verify" ]] || exit 1\nexec "%s" "$@"\n' "$real_openssl" >"$test_root/shim/openssl"
+chmod +x "$test_root/shim/openssl"
+expect 1 "failure after the certificate was issued" env PATH="$test_root/shim:$PATH" \
+  bash "$scripts_dir/certificate/cert_ecdsa_client.sh" --fqdn late.example.test
+check "late failure leaves no key" test ! -e "$tls/private/certificates/late.example.test.pem"
+check "late failure leaves no staged file" bash -c "! find '$tls' -name '*.new.*' | grep -q ."
+check "late failure revokes the unused entry" bash -c \
+  "grep 'CN=late.example.test' '$tls/db/index.txt' | grep -q '^R' && ! grep 'CN=late.example.test' '$tls/db/index.txt' | grep -q '^V'"
+expect 0 "next run after a late failure is not blocked" bash "$scripts_dir/certificate/cert_ecdsa_client.sh" \
+  --fqdn late.example.test
+
+# Without --fqdn the script asks for the FQDN only, and the Common Name follows it
+expect 0 "interactive mode" bash -c "printf 'asked.example.test\n\nother.example.test\n' | bash '$scripts_dir/certificate/cert_ecdsa_server.sh'"
+check "interactive mode sets the Common Name to the FQDN" bash -c \
+  "openssl x509 -in '$tls/certs/certificates/asked.example.test.pem' -noout -subject | grep -q 'CN *= *asked.example.test$'"
+expect 2 "interactive mode refuses a second certificate for the FQDN" bash -c \
+  "printf 'asked.example.test\n\n' | bash '$scripts_dir/certificate/cert_ecdsa_server.sh'"
+
+# Scripts that run at the same time must not lose a database entry
+entries_before=$(entries_of "$tls/db/index.txt")
+for n in 1 2 3 4; do
+  bash "$scripts_dir/certificate/cert_ecdsa_client.sh" --fqdn "parallel$n.example.test" >/dev/null 2>&1 &
+done
+wait
+check "parallel runs keep every database entry" test "$(entries_of "$tls/db/index.txt")" = "$((entries_before + 4))"
+check "parallel runs create every certificate" bash -c \
+  "ls '$tls'/certs/certificates/parallel[1-4].example.test.pem | wc -l | grep -qx 4"
+flock "$tls/.renew.lock" sleep 3 &
+sleep 0.5
+expect 2 "revocation stops while another script holds the lock" bash "$scripts_dir/revoke_tls_certificates.sh" --crl-only
+wait
+
 echo "=== Verification ==="
 expect 0 "verify passes for a server certificate" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
 expect 0 "verify passes for a client certificate" bash "$scripts_dir/verify_tls_certificates.sh" client.example.test
@@ -228,6 +271,16 @@ openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -subj "/CN=
 cp "$tls/certs/certificates/BOOK.pem" "$tls/certs/certificates/BOOK_chain_bundle.pem"
 expect 1 "verify fails for a certificate from another issuer" bash "$scripts_dir/verify_tls_certificates.sh" BOOK
 rm -f "$tls/certs/certificates/BOOK.pem" "$tls/certs/certificates/BOOK_chain_bundle.pem"
+cp -p "$tls/certs/certificates/app.example.test_chain_bundle.pem" "$test_root/bundle.keep"
+cp "$tls/certs/certificates/app.example.test.pem" "$tls/certs/certificates/app.example.test_chain_bundle.pem"
+expect 1 "verify fails for a bundle without the chain" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
+cp -p "$test_root/bundle.keep" "$tls/certs/certificates/app.example.test_chain_bundle.pem"
+cp -p "$tls/certs/certificates/app.example.test_haproxy.pem" "$test_root/haproxy.keep"
+cat "$tls/certs/certificates/app.example.test_chain_bundle.pem" "$tls/private/certificates/client.example.test.pem" \
+  >"$tls/certs/certificates/app.example.test_haproxy.pem"
+expect 1 "verify fails for a HAProxy bundle with another key" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
+cp -p "$test_root/haproxy.keep" "$tls/certs/certificates/app.example.test_haproxy.pem"
+expect 0 "verify passes after the bundles are restored" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
 expect 1 "verify fails for an unknown certificate" bash "$scripts_dir/verify_tls_certificates.sh" missing.example.test
 expect 2 "verify rejects an unknown option" bash "$scripts_dir/verify_tls_certificates.sh" --unknown
 
@@ -332,6 +385,51 @@ openssl ca -config "$limited/openssl.cnf/cert.cnf" -rand_serial -notext -batch -
   -out "$test_root/outside.pem" -extfile "$test_root/outside.ext" >/dev/null 2>&1
 expect 2 "openssl verify refuses a name outside the constraints" openssl verify \
   -CAfile "$limited/certs/intermediate/ca_chain_bundle.pem" "$test_root/outside.pem"
+
+echo "=== Replace and revoke an authority ==="
+count_status() {
+  awk -F'\t' -v s="$1" '$1 == s' "$2" | grep -c . || true
+}
+expect 0 "CRL of the root CA" bash "$scripts_dir/revoke_tls_certificates.sh" --crl-only --authority ca
+check "CRL of the root CA verifies" openssl crl -in "$limited/crl/root_crl.pem" -noout \
+  -CAfile "$limited/certs/root/root_ca_chain_bundle.pem"
+expect 0 "CRL of the trusted identity" bash "$scripts_dir/revoke_tls_certificates.sh" --crl-only --authority root_ca
+check "CRL of the trusted identity verifies" openssl crl -in "$limited/crl/trusted_id_crl.pem" -noout \
+  -CAfile "$limited/certs/root/trusted_id.pem"
+expect 2 "caCompromise needs --authority" bash "$scripts_dir/revoke_tls_certificates.sh" --yes \
+  --reason caCompromise app.example.test
+old_ca_serial=$(serial_of "$limited/certs/intermediate/ca.pem")
+expect 1 "replacing an authority asks for confirmation" bash "$scripts_dir/intermediate-certificate-authority/ca.sh" --replace
+check "a refused replacement changes nothing" test "$(serial_of "$limited/certs/intermediate/ca.pem")" = "$old_ca_serial"
+expect 0 "intermediate CA is replaced" bash "$scripts_dir/intermediate-certificate-authority/ca.sh" --replace --yes
+check "the old intermediate CA is superseded" test "$(count_status R "$limited/db/root_ca/index.txt")" = "1"
+check "the new intermediate CA is the only valid entry" test "$(count_status V "$limited/db/root_ca/index.txt")" = "1"
+check "unique_subject is yes after the replacement" grep -q "unique_subject = yes" "$limited/db/root_ca/index.txt.attr"
+check "the old intermediate CA is in the archive" bash -c "ls '$limited'/archive/_ca/ca/*/certs/intermediate/ca.pem >/dev/null"
+expect 0 "database of the root CA loads after the replacement" openssl ca -config "$limited/openssl.cnf/ca.cnf" \
+  -updatedb -passin env:TLS_ROOT_CA_PASSPHRASE
+expect 0 "certificate from the new intermediate CA" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn fresh.example.test
+expect 0 "verify passes for the new intermediate CA" bash "$scripts_dir/verify_tls_certificates.sh" fresh.example.test
+expect 0 "revoke the intermediate CA (dry run)" bash "$scripts_dir/revoke_tls_certificates.sh" --dry-run --authority ca
+check "dry run revokes nothing" test "$(count_status V "$limited/db/root_ca/index.txt")" = "1"
+expect 0 "revoke the intermediate CA" bash "$scripts_dir/revoke_tls_certificates.sh" --yes --authority ca \
+  --reason caCompromise
+check "no valid intermediate CA is left in the database" test "$(count_status V "$limited/db/root_ca/index.txt")" = "0"
+check "CRL of the root CA lists both certificates" bash -c \
+  "openssl crl -in '$limited/crl/root_crl.pem' -noout -text | grep -c 'Serial Number:' | grep -qx 2"
+check "CRL of the root CA has the reason" bash -c \
+  "openssl crl -in '$limited/crl/root_crl.pem' -noout -text | grep -q 'CA Compromise'"
+expect 2 "an authority is not revoked twice" bash "$scripts_dir/revoke_tls_certificates.sh" --yes --authority ca
+check "the database of the certificates is not touched" bash -c "! grep -q 'HA E1' '$limited/db/index.txt'"
+expect 0 "root CA is replaced" bash "$scripts_dir/certificate-authority/root_ca.sh" --replace --yes
+check "the old root CA is superseded" test "$(count_status R "$limited/db/trusted_id/index.txt")" = "1"
+check "the new root CA is the only valid entry" test "$(count_status V "$limited/db/trusted_id/index.txt")" = "1"
+expect 0 "trusted identity is replaced" bash "$scripts_dir/certificate-authority/trusted_id.sh" --replace --yes
+check "the old trusted identity is in the archive" bash -c \
+  "ls '$limited'/archive/_ca/trusted_id/*/certs/root/trusted_id.pem >/dev/null"
+check "no temporary folder or staged file is left" bash -c \
+  "! find '$limited' \\( -name '.ca.*' -o -name '.root_ca.*' -o -name '.trusted_id.*' -o -name '*.new.*' \\) | grep -q ."
 export HOME="$first_home"
 
 echo "=== Old script names ==="

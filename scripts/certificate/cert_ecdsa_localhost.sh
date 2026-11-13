@@ -15,13 +15,13 @@
 # Usage: ./cert_ecdsa_localhost.sh [--non-interactive] [--reuse-key] [-h|--help]
 #
 # Options:
-#  --non-interactive Set the Common Name to localhost, so openssl req does not
-#                    ask for it.
+#  --non-interactive Kept for older commands. The script never asks a
+#                    question.
 #  --reuse-key       Reuse the existing private key instead of generating a
 #                    new one. The key must exist.
 #  -h, --help        Show this help.
 #
-# Without options the script asks for the Common Name.
+# The Common Name is localhost.
 
 # Notes:
 # - The certificates are for a homelab and for testing.

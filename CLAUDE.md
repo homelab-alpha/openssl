@@ -74,6 +74,12 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
 - Name constraints are optional and never a default: the authority scripts add
   the extension only with `--name-constraints`, and `cert.sh` checks a name
   against the authorities before it creates anything.
+- An existing authority is only replaced with `--replace`. The authority scripts
+  then mark the old database entry as superseded themselves.
+- Every script that changes a database takes the lock first (`acquire_lock`). A
+  script that holds the lock starts another script with `TLS_LOCK_HELD=1`.
+- New files are put in place with `install_files`, never with separate `cp`
+  commands.
 - Script headers use `# Script Name:` and `# Description:`.
 - The name `ssl` is replaced by `tls`. The old names stay for backward
   compatibility until the next major version: `ssl_*.sh`, `renew_ssl_*.sh`,
@@ -87,6 +93,8 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
 - `examples/tls-directory-structure/` holds example keys and certificates.
   Gitleaks reports them, so they are listed in `.gitleaksignore` with the path,
   the rule, and the line number. Update an entry when you change such a file.
+  Create the folder again with the scripts when the layout changes, with the
+  passphrase `example-passphrase`.
 - `tls_dotfiles_installer.sh` only adds the aliases to `~/.bashrc`. It does not
   remove or change any other file.
 - The documentation site shows the scripts (repository `homelab-alpha/docs`,

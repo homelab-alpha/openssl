@@ -13,7 +13,7 @@
 # put in place after all checks passed. An existing key and certificate are
 # copied to the archive first.
 
-# Usage: ./root_ca.sh [--no-passphrase] [--name-constraints <list>] [-h|--help]
+# Usage: ./root_ca.sh [--no-passphrase] [--name-constraints <list>] [--replace [--yes]] [-h|--help]
 #
 # Options:
 #  --no-passphrase  Do not encrypt the private key. Anyone who can read the
@@ -27,6 +27,11 @@
 #                   A space after a comma is allowed, with or without the
 #                   quotes. Can be repeated. Without this option there is no
 #                   limit.
+#  --replace       Create the authority again when it exists. The old key and
+#                   certificate are copied to the archive, and the old
+#                   database entry is marked as superseded. Without this
+#                   option an existing authority is never changed.
+#  --yes            Used with --replace. Do not ask for confirmation.
 #  -h, --help       Show this help.
 #
 # Without --no-passphrase the script asks for a new passphrase, or reads it
@@ -41,6 +46,9 @@
 #   the list is not limited. Add DNS:localhost and IP:127.0.0.0/8 when you use
 #   the localhost certificate. To change the list, create the authority again.
 # - Keep the passphrase. Without it the key cannot sign a new intermediate CA.
+# - With --replace the old database entry is marked as superseded. Run
+#   revoke_tls_certificates.sh --crl-only --authority root_ca afterwards to put
+#   it in the CRL.
 # - Overwriting the root CA requires a new intermediate CA and new
 #   certificates.
 # - The serial number is random (openssl ca -rand_serial). The script does not
@@ -58,13 +66,37 @@ source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib/common.sh"
 # Function to remove the temporary folder. It runs from the EXIT trap.
 # shellcheck disable=SC2329
 cleanup() {
+  # A certificate that was issued but not put in place must not stay valid in
+  # the database
+  if [[ "$issued" == "true" && "$installed" == "false" ]]; then
+    if revoke_entry "$new_cert" cessationOfOperation; then
+      print_warning "The script failed after the certificate was issued. Its database entry is marked as revoked."
+    else
+      print_warning "The script failed after the certificate was issued, and its database entry could not be revoked. Revoke $new_cert by hand."
+    fi
+  fi
+  restore_second_entry
   if [[ -n "$work_dir" && -d "$work_dir" ]]; then
     rm -rf "$work_dir"
   fi
 }
 
+# Function to mark the database entry of a certificate as revoked, with the
+# key of the authority that signed it
+# Usage: revoke_entry <certificate> <reason>
+revoke_entry() {
+  TLS_SIGNER_PASSPHRASE="$signer_passphrase" openssl ca -config "$config_file" \
+    ${signer_options[@]+"${signer_options[@]}"} -revoke "$1" -crl_reason "$2" >/dev/null 2>&1
+}
+
 use_passphrase=true
 work_dir=""
+replace=false
+assume_yes=false
+replacing=false
+issued=false
+installed=false
+old_cert=""
 name_constraints_list=""
 key_passphrase=""
 signer_passphrase=""
@@ -73,6 +105,14 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
   --no-passphrase)
     use_passphrase=false
+    shift
+    ;;
+  --replace)
+    replace=true
+    shift
+    ;;
+  --yes)
+    assume_yes=true
     shift
     ;;
   --name-constraints)
@@ -150,18 +190,19 @@ for dir in "$(dirname "$cert_file")" "$(dirname "$key_file")" "$csr_dir"; do
 done
 [[ "$missing" == "false" ]] || exit 2
 
-# If unique_subject is enabled and the authority exists, display an error and exit
+# An existing authority is only replaced with --replace
 if [[ -f "$cert_file" ]]; then
-  if unique_subject_enabled "$database.attr"; then
-    print_error "unique_subject is enabled and Root Certificate Authority already exists."
+  if [[ "$replace" == "false" ]]; then
+    print_error "Root Certificate Authority already exists. Use --replace to create it again."
     exit 2
   fi
+  replacing=true
 
   print_section_header "WARNING: Overwriting Root Certificate Authority"
   print_warning "Root Certificate Authority already exists and will be OVERWRITTEN!"
   print_warning "This action will require REGENERATING ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!"
   print_warning "If you continue, all issued certificates will become INVALID!"
-  if ! confirm; then
+  if [[ "$assume_yes" == "false" ]] && ! confirm; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
   fi
@@ -183,6 +224,9 @@ else
   print_warning "The private key of the root CA is not encrypted."
 fi
 
+# Two scripts must not change the database at the same time
+acquire_lock 2 120 "Another certificate script is still running. Try again later."
+
 # Work in a temporary folder that only the owner can read
 work_dir=$(umask 077 && mktemp -d "$base_dir/.root_ca.XXXXXX")
 trap cleanup EXIT
@@ -191,6 +235,14 @@ new_key="$work_dir/key.pem"
 new_csr="$work_dir/csr.pem"
 new_cert="$work_dir/cert.pem"
 new_chain="$work_dir/chain_bundle.pem"
+
+# The old certificate is still valid in the database. Keep a copy to mark it as
+# superseded later, and allow a second entry with the same name for this run.
+if [[ "$replacing" == "true" ]]; then
+  old_cert="$work_dir/old_cert.pem"
+  cp -p "$cert_file" "$old_cert"
+  allow_second_entry "$database.attr"
+fi
 
 # Generate ECDSA key
 print_section_header "Generate ECDSA key"
@@ -223,6 +275,7 @@ fi
 
 TLS_SIGNER_PASSPHRASE="$signer_passphrase" openssl ca -config "$sign_config" -extensions v3_ca -rand_serial -notext -batch \
   ${signer_options[@]+"${signer_options[@]}"} -in "$new_csr" -days 7305 -out "$new_cert"
+issued=true
 
 # Create Root Certificate Authority Chain Bundle
 print_section_header "Create Root Certificate Authority Chain Bundle"
@@ -238,17 +291,33 @@ if [[ "$(openssl x509 -in "$new_cert" -noout -pubkey)" != \
 fi
 echo "The certificate matches the private key."
 
-# Put the files in place, after a copy of the existing files
+# Put the files in place, after a copy of the existing files. All files are
+# copied next to their target first and then renamed, so a failure does not
+# leave a mix of old and new files.
 print_section_header "Install the files"
 archive_files "_ca/root_ca" "$key_file" "$cert_file" "${cert_file%.pem}.crt" \
   "${cert_file%.pem}_chain_bundle.pem" "${cert_file%.pem}_chain_bundle.crt" "$csr_dir/root_ca.pem"
-mv -f "$new_key" "$key_file"
-chmod 600 "$key_file"
-cp -f "$new_csr" "$csr_dir/root_ca.pem"
-cp -f "$new_cert" "$cert_file"
-cp -f "$new_cert" "${cert_file%.pem}.crt"
-cp -f "$new_chain" "${cert_file%.pem}_chain_bundle.pem"
-cp -f "$new_chain" "${cert_file%.pem}_chain_bundle.crt"
+install_files \
+  "$new_key" "$key_file" \
+  "$new_csr" "$csr_dir/root_ca.pem" \
+  "$new_cert" "$cert_file" \
+  "$new_cert" "${cert_file%.pem}.crt" \
+  "$new_chain" "${cert_file%.pem}_chain_bundle.pem" \
+  "$new_chain" "${cert_file%.pem}_chain_bundle.crt" || {
+  print_error "Cannot put the new files in place. The existing files were not changed."
+  exit 1
+}
+installed=true
+
+# The new certificate is in use, so the old entry is superseded
+if [[ "$replacing" == "true" ]] && entry_is_valid "$database" "$old_cert"; then
+  if revoke_entry "$old_cert" superseded; then
+    echo "The database entry of the old certificate is marked as superseded."
+  else
+    print_warning "Cannot mark the database entry of the old certificate as superseded."
+  fi
+fi
+restore_second_entry
 echo
 print_cyan "--> root_ca.pem and root_ca.crt"
 print_cyan "--> root_ca_chain_bundle.pem and root_ca_chain_bundle.crt"

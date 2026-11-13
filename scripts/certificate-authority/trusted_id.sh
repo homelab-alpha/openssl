@@ -12,7 +12,7 @@
 # the private key. The files are put in place after all checks passed. An
 # existing key and certificate are copied to the archive first.
 
-# Usage: ./trusted_id.sh [--no-passphrase] [--name-constraints <list>] [-h|--help]
+# Usage: ./trusted_id.sh [--no-passphrase] [--name-constraints <list>] [--replace [--yes]] [-h|--help]
 #
 # Options:
 #  --no-passphrase  Do not encrypt the private key. Anyone who can read the
@@ -26,6 +26,10 @@
 #                   A space after a comma is allowed, with or without the
 #                   quotes. Can be repeated. Without this option there is no
 #                   limit.
+#  --replace       Create the trusted identity again when it exists. The old key
+#                   and certificate are copied to the archive. Without this
+#                   option an existing trusted identity is never changed.
+#  --yes            Used with --replace. Do not ask for confirmation.
 #  -h, --help       Show this help.
 #
 # Without --no-passphrase the script asks for a new passphrase, or reads it
@@ -58,6 +62,8 @@ cleanup() {
 
 use_passphrase=true
 work_dir=""
+replace=false
+assume_yes=false
 name_constraints_list=""
 key_passphrase=""
 
@@ -65,6 +71,14 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
   --no-passphrase)
     use_passphrase=false
+    shift
+    ;;
+  --replace)
+    replace=true
+    shift
+    ;;
+  --yes)
+    assume_yes=true
     shift
     ;;
   --name-constraints)
@@ -122,14 +136,10 @@ if [[ ! -f "$config_file" || ! -d "$certs_root_dir" || ! -d "$private_root_dir" 
   exit 2
 fi
 
-# If unique_subject is enabled and Trusted ID exists, display an error and exit
+# An existing trusted identity is only replaced with --replace
 if [[ -f "$cert_file" ]]; then
-  database=$(config_database "$config_file") || {
-    print_error "Cannot read the database path from $config_file."
-    exit 2
-  }
-  if unique_subject_enabled "$database.attr"; then
-    print_error "unique_subject is enabled and Trusted ID already exists."
+  if [[ "$replace" == "false" ]]; then
+    print_error "Trusted ID already exists. Use --replace to create it again."
     exit 2
   fi
 
@@ -137,7 +147,7 @@ if [[ -f "$cert_file" ]]; then
   print_warning "Trusted ID already exists and will be OVERWRITTEN!"
   print_warning "This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!"
   print_warning "If you continue, all issued certificates will become INVALID!"
-  if ! confirm; then
+  if [[ "$assume_yes" == "false" ]] && ! confirm; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
   fi
@@ -206,13 +216,18 @@ echo "The certificate matches the private key."
 print_section_header "Check Certificate"
 openssl x509 -in "$new_cert" -text -noout
 
-# Put the files in place, after a copy of the existing files
+# Put the files in place, after a copy of the existing files. All files are
+# copied next to their target first and then renamed, so a failure does not
+# leave a mix of old and new files.
 print_section_header "Install the files"
 archive_files "_ca/trusted_id" "$key_file" "$cert_file" "$certs_root_dir/trusted_id.crt"
-mv -f "$new_key" "$key_file"
-chmod 600 "$key_file"
-cp -f "$new_cert" "$cert_file"
-cp -f "$new_cert" "$certs_root_dir/trusted_id.crt"
+install_files \
+  "$new_key" "$key_file" \
+  "$new_cert" "$cert_file" \
+  "$new_cert" "$certs_root_dir/trusted_id.crt" || {
+  print_error "Cannot put the new files in place. The existing files were not changed."
+  exit 1
+}
 echo
 print_cyan "--> trusted_id.pem and trusted_id.crt"
 
