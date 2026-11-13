@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(scripts): rename ssl to tls, keep old names [7fb49bc](https://github.com/homelab-alpha/openssl/commit/7fb49bc07f27b2eb19e372aa153492962430461d) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): allow multiple IPs in server certs [0c2d90b](https://github.com/homelab-alpha/openssl/commit/0c2d90b17595148459f0eadbaeca71d515b59844) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): allow spaces after commas in --ip [715eabb](https://github.com/homelab-alpha/openssl/commit/715eabbea427af9bd2f435e160ff6b5726e0c372) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts)!: harden the scripts after a code audit [f21e417](https://github.com/homelab-alpha/openssl/commit/f21e417386bd75035a3c28faf90550a55ecc8060) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Changed
 
