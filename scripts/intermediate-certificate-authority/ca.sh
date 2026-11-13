@@ -23,8 +23,10 @@
 #                   below it, can sign for. The list is separated by commas:
 #                   DNS:<domain> (the domain and its subdomains) and
 #                   IP:<IPv4 network>/<prefix>. For example
-#                   DNS:example.test,DNS:localhost,IP:192.168.0.0/16,IP:127.0.0.0/8
-#                   Can be repeated. Without this option there is no limit.
+#                   "DNS:example.test, DNS:localhost, IP:192.168.0.0/16"
+#                   A space after a comma is allowed, with or without the
+#                   quotes. Can be repeated. Without this option there is no
+#                   limit.
 #  -h, --help       Show this help.
 #
 # The key of the intermediate CA is not encrypted by default, because the
@@ -75,11 +77,18 @@ while [[ $# -gt 0 ]]; do
     ;;
   --name-constraints)
     [[ -n "${2:-}" ]] || {
-      print_error "--name-constraints needs a list, for example DNS:example.test,IP:192.168.0.0/16."
+      print_error "--name-constraints needs a list, for example \"DNS:example.test, IP:192.168.0.0/16\"."
       exit 2
     }
     name_constraints_list+="${name_constraints_list:+,}$2"
     shift 2
+    # Without quotes, the shell splits "a, b" into separate arguments. Take the
+    # next argument as well when the list so far ends with a comma, or when the
+    # next argument starts with a comma.
+    while [[ $# -gt 0 && "$1" != -* ]] && [[ "$name_constraints_list" == *, || "$1" == ,* ]]; do
+      name_constraints_list+="$1"
+      shift
+    done
     ;;
   -h | --help)
     show_usage '^# Notes:'
@@ -97,7 +106,7 @@ name_constraints=""
 if [[ -n "$name_constraints_list" ]]; then
   name_constraints=$(build_name_constraints "$name_constraints_list") || {
     print_error "Invalid --name-constraints list: $name_constraints_list"
-    echo "Use DNS:<domain> and IP:<IPv4 network>/<prefix>, separated by commas (for example DNS:example.test,IP:192.168.0.0/16)." >&2
+    echo "Use DNS:<domain> and IP:<IPv4 network>/<prefix>, separated by commas (for example \"DNS:example.test, IP:192.168.0.0/16\")." >&2
     exit 2
   }
 fi

@@ -296,7 +296,9 @@ check "refused option creates no key" test ! -e "$limited/private/root/trusted_i
 expect 0 "trusted identity with name constraints" bash "$scripts_dir/certificate-authority/trusted_id.sh" \
   --name-constraints "DNS:test,DNS:localhost,IP:0.0.0.0/0"
 expect 0 "root CA with name constraints" bash "$scripts_dir/certificate-authority/root_ca.sh" \
-  --name-constraints "DNS:example.test,DNS:lab.test,DNS:localhost" --name-constraints "IP:192.168.0.0/16,IP:127.0.0.0/8"
+  --name-constraints DNS:example.test, DNS:lab.test, DNS:localhost --name-constraints "IP:192.168.0.0/16, IP:127.0.0.0/8"
+check "a list with spaces and without quotes is read in full" bash -c \
+  "openssl x509 -in '$limited/certs/root/root_ca.pem' -noout -text | grep -A8 'Name Constraints' | grep -c 'DNS:\|IP:' | grep -qx 5"
 expect 0 "intermediate CA with name constraints" bash "$scripts_dir/intermediate-certificate-authority/ca.sh" \
   --name-constraints "DNS:example.test, DNS:localhost, IP:192.168.1.77/16, IP:127.0.0.0/8"
 check "intermediate CA holds the critical extension" bash -c \

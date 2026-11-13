@@ -196,10 +196,11 @@ domain, when someone gets hold of an authority key. The option
 below it, can sign for. It is not set by default.
 
 ```bash
-new-root-ca --name-constraints "DNS:example.test,DNS:localhost,IP:192.168.0.0/16,IP:127.0.0.0/8"
-new-ca      --name-constraints "DNS:example.test,DNS:localhost,IP:192.168.0.0/16,IP:127.0.0.0/8"
+new-root-ca --name-constraints "DNS:example.test, DNS:localhost, IP:192.168.0.0/16, IP:127.0.0.0/8"
+new-ca      --name-constraints "DNS:example.test, DNS:localhost, IP:192.168.0.0/16, IP:127.0.0.0/8"
 ```
 
+- A space after a comma is allowed.
 - `DNS:<domain>` permits the domain and its subdomains. `IP:<network>/<prefix>`
   permits an IPv4 network.
 - A type that is not in the list is not limited. Name both the DNS names and the
