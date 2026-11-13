@@ -179,7 +179,7 @@ is_revoked() {
   leaf) config="$base_dir/openssl.cnf/cert.cnf" ;;
   intermediate) config="$base_dir/openssl.cnf/ca.cnf" ;;
   root)
-    [ "$(basename "$file")" = "root_ca.pem" ] || return 1
+    [[ "$(basename "$file")" = "root_ca.pem" ]] || return 1
     config="$base_dir/openssl.cnf/root_ca.cnf"
     ;;
   *) return 1 ;;
@@ -199,7 +199,7 @@ check_certificate() {
     had_error=true
     return
   }
-  [ -n "$cn" ] || cn=$(basename "$file" .pem)
+  [[ -n "$cn" ]] || cn=$(basename "$file" .pem)
   type=$(get_type "$file" "$location")
   enddate=$(openssl x509 -in "$file" -noout -enddate 2>/dev/null)
   enddate="${enddate#notAfter=}"
@@ -238,13 +238,13 @@ check_certificate() {
 # Function to scan a directory for certificates
 scan_directory() {
   local dir="$1" location="$2" file name
-  [ -d "$dir" ] || {
+  [[ -d "$dir" ]] || {
     print_error "Directory not found: $dir"
     had_error=true
     return
   }
   for file in "$dir"/*.pem; do
-    [ -f "$file" ] || continue
+    [[ -f "$file" ]] || continue
     name=$(basename "$file")
     # Skip bundles and combined files, they hold copies of other certificates
     case "$name" in
@@ -258,21 +258,21 @@ scan_directory() {
 print_results() {
   local days cn type enddate state color
   local reset="" green="" yellow="" red=""
-  if [ -t 1 ]; then
+  if [[ -t 1 ]]; then
     reset="\e[0m"
     green="\e[32m"
     yellow="\e[33m"
     red="\e[31m"
   fi
 
-  [ "${#results[@]}" -gt 0 ] || return
+  [[ "${#results[@]}" -gt 0 ]] || return
 
-  if [ "$quiet" = false ]; then
+  if [[ "$quiet" = false ]]; then
     printf '%-40s %-13s %-26s %6s  %s\n' "NAME (CN)" "TYPE" "EXPIRES" "DAYS" "STATUS"
   fi
 
   while IFS="|" read -r _ days cn type enddate state; do
-    if [ "$quiet" = true ] && [ "$state" = "OK" ]; then
+    if [[ "$quiet" = true ]] && [[ "$state" = "OK" ]]; then
       continue
     fi
     case "$state" in
@@ -298,7 +298,7 @@ if ! command -v openssl >/dev/null 2>&1; then
   exit 3
 fi
 
-if [ ! -d "$certs_dir" ]; then
+if [[ ! -d "$certs_dir" ]]; then
   print_error "Certificate directory not found: $certs_dir"
   exit 3
 fi
@@ -311,17 +311,17 @@ scan_directory "$certs_certificates_dir" "leaf"
 
 print_results
 
-if [ "$quiet" = false ]; then
+if [[ "$quiet" = false ]]; then
   echo
   print_cyan "Thresholds: ${warn_days} days (server and client), ${ca_warn_days} days (CA)."
 fi
 
 # Exit with the most severe result
-if [ "$had_error" = true ]; then
+if [[ "$had_error" = true ]]; then
   exit 3
-elif [ "$had_expired" = true ]; then
+elif [[ "$had_expired" = true ]]; then
   exit 2
-elif [ "$had_warning" = true ]; then
+elif [[ "$had_warning" = true ]]; then
   exit 1
 fi
 exit 0

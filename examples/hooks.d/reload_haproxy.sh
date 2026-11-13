@@ -33,7 +33,7 @@ fqdn="$1"
 haproxy_bundle="$5"
 
 # Client certificates have no HAProxy bundle
-if [ -z "$haproxy_bundle" ]; then
+if [[ -z "$haproxy_bundle" ]]; then
   exit 0
 fi
 

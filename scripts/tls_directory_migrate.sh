@@ -48,7 +48,7 @@ new_dir="$HOME/tls"
 
 # Parse the arguments
 dry_run=false
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   case "$1" in
   --dry-run)
     dry_run=true
@@ -66,17 +66,17 @@ while [ $# -gt 0 ]; do
 done
 
 # Decide what to do
-if [ -L "$old_dir" ]; then
+if [[ -L "$old_dir" ]]; then
   echo "Nothing to do: $old_dir is already a symbolic link."
   exit 0
 fi
 
-if [ ! -d "$old_dir" ]; then
+if [[ ! -d "$old_dir" ]]; then
   echo "Nothing to do: $old_dir does not exist."
   exit 0
 fi
 
-if [ -e "$new_dir" ]; then
+if [[ -e "$new_dir" ]]; then
   print_error "Both $old_dir and $new_dir exist. Check them and move or remove one yourself."
   exit 2
 fi
@@ -84,7 +84,7 @@ fi
 # List the configuration files that contain the old path
 config_files=()
 for file in "$old_dir"/openssl.cnf/*.cnf; do
-  [ -f "$file" ] || continue
+  [[ -f "$file" ]] || continue
   if grep -q 'HOME/ssl' "$file"; then
     config_files+=("$file")
   fi
@@ -95,7 +95,7 @@ echo "Move:   $old_dir -> $new_dir"
 echo "Link:   $old_dir -> tls"
 echo "Config: ${#config_files[@]} file(s) with the path \$HOME/ssl are changed (a copy is saved as .pre-tls)."
 
-if [ "$dry_run" = true ]; then
+if [[ "$dry_run" = true ]]; then
   echo "Dry run: nothing was changed."
   exit 0
 fi

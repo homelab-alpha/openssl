@@ -179,7 +179,7 @@ parse_arguments() {
       exit 2
       ;;
     *)
-      [ -z "$target_fqdn" ] || {
+      [[ -z "$target_fqdn" ]] || {
         print_error "Give only one FQDN, or use --all --within <days>."
         exit 2
       }
@@ -189,21 +189,21 @@ parse_arguments() {
     esac
   done
 
-  if [ "$renew_all" = true ]; then
-    [ -z "$target_fqdn" ] || {
+  if [[ "$renew_all" = true ]]; then
+    [[ -z "$target_fqdn" ]] || {
       print_error "Use either an FQDN or --all, not both."
       exit 2
     }
-    [ -n "$within_days" ] || {
+    [[ -n "$within_days" ]] || {
       print_error "--all needs --within <days>."
       exit 2
     }
   else
-    [ -z "$within_days" ] || {
+    [[ -z "$within_days" ]] || {
       print_error "--within can only be used together with --all."
       exit 2
     }
-    [ -n "$target_fqdn" ] || {
+    [[ -n "$target_fqdn" ]] || {
       print_error "Give an FQDN, or use --all --within <days>."
       exit 2
     }
@@ -228,27 +228,27 @@ preflight() {
     "$db_dir/index.txt" \
     "$db_dir/serial" \
     "$base_dir/openssl.cnf/cert.cnf"; do
-    if [ ! -f "$file" ]; then
+    if [[ ! -f "$file" ]]; then
       print_error "Required file not found: $file"
       missing=true
     fi
   done
-  [ -d "$certs_certificates_dir" ] || {
+  [[ -d "$certs_certificates_dir" ]] || {
     print_error "Directory not found: $certs_certificates_dir"
     missing=true
   }
   for file in cert cert_rsa_server cert_ecdsa_server cert_rsa_client cert_ecdsa_client cert_ecdsa_localhost; do
-    if [ ! -f "$certificate_script_dir/$file.sh" ]; then
+    if [[ ! -f "$certificate_script_dir/$file.sh" ]]; then
       print_error "Certificate script not found: $certificate_script_dir/$file.sh"
       missing=true
     fi
   done
-  [ "$missing" = false ] || exit 2
+  [[ "$missing" = false ]] || exit 2
 
   # An encrypted key of the intermediate CA needs its passphrase in the
   # environment: the certificate scripts run without a terminal.
   if key_is_encrypted "$private_dir/intermediate/ca.pem"; then
-    if [ -z "${TLS_CA_PASSPHRASE:-}" ]; then
+    if [[ -z "${TLS_CA_PASSPHRASE:-}" ]]; then
       print_error "The key of the intermediate CA is encrypted. Set TLS_CA_PASSPHRASE to renew."
       exit 2
     fi
@@ -266,9 +266,9 @@ preflight() {
 # Function to warn about CA certificates that expire soon
 warn_ca_certificates() {
   local days="$ca_warn_days" file name
-  [ -z "$within_days" ] || [ "$within_days" -le "$days" ] || days="$within_days"
+  [[ -z "$within_days" ]] || [[ "$within_days" -le "$days" ]] || days="$within_days"
   for file in "$certs_root_dir"/trusted_id.pem "$certs_root_dir"/root_ca.pem "$certs_intermediate_dir"/ca.pem; do
-    [ -f "$file" ] || continue
+    [[ -f "$file" ]] || continue
     name=$(basename "$file" .pem)
     if ! openssl x509 -in "$file" -noout -checkend "$((days * 86400))" >/dev/null 2>&1; then
       print_warning "CA certificate '$name' expires within $days days. This script does not renew CA certificates."
@@ -297,7 +297,7 @@ is_revoked() {
 plan_certificate() {
   local fqdn="$1" cert="$certs_certificates_dir/$1.pem" text algo kind enddate token ips=() ip="" wildcard_domain="" www=false
 
-  if [ ! -f "$cert" ]; then
+  if [[ ! -f "$cert" ]]; then
     print_error "No certificate found for $fqdn in $certs_certificates_dir."
     return 1
   fi
@@ -330,14 +330,14 @@ plan_certificate() {
     return 1
   fi
 
-  if [ "$reuse_key" = true ] && [ ! -f "$private_certificates_dir/$fqdn.pem" ]; then
+  if [[ "$reuse_key" = true ]] && [[ ! -f "$private_certificates_dir/$fqdn.pem" ]]; then
     print_error "--reuse-key: no private key found for $fqdn."
     return 1
   fi
 
   # The names must be the ones that the certificate scripts create
-  if [ "$fqdn" = "localhost" ]; then
-    if [ "$algo" != "ecdsa" ] || [ "$kind" != "server" ]; then
+  if [[ "$fqdn" = "localhost" ]]; then
+    if [[ "$algo" != "ecdsa" ]] || [[ "$kind" != "server" ]]; then
       print_error "localhost can only be renewed as an ECDSA server certificate."
       return 1
     fi
@@ -358,9 +358,9 @@ plan_certificate() {
         ;;
       esac
     done < <(get_san "$cert")
-    if [ "${#ips[@]}" -gt 0 ]; then
+    if [[ "${#ips[@]}" -gt 0 ]]; then
       # Only the server scripts add IPv4 addresses, and only IPv4 is supported
-      if [ "$kind" = "client" ]; then
+      if [[ "$kind" = "client" ]]; then
         print_error "$fqdn has IP addresses that the certificate scripts cannot reproduce. Renew it by hand."
         return 1
       fi
@@ -390,7 +390,7 @@ plan_certificate() {
 select_targets() {
   local file name
 
-  if [ "$renew_all" = false ]; then
+  if [[ "$renew_all" = false ]]; then
     case "$target_fqdn" in
     trusted_id | root_ca | ca)
       print_error "'$target_fqdn' is a CA certificate. This script does not renew CA certificates."
@@ -406,7 +406,7 @@ select_targets() {
   fi
 
   for file in "$certs_certificates_dir"/*.pem; do
-    [ -f "$file" ] || continue
+    [[ -f "$file" ]] || continue
     name=$(basename "$file" .pem)
     case "$name" in
     *_chain_bundle | *_haproxy | *_bundle) continue ;;
@@ -429,7 +429,7 @@ print_plan() {
   printf '%-40s %-6s %-7s %-26s %s\n' "FQDN" "ALGO" "ROLE" "EXPIRES" "KEY"
   for i in "${!plan_fqdn[@]}"; do
     printf '%-40s %-6s %-7s %-26s %s\n' "${plan_fqdn[$i]}" "${plan_algo[$i]}" "${plan_kind[$i]}" "${plan_expires[$i]}" \
-      "$([ "$reuse_key" = true ] && echo "reuse" || echo "new")"
+      "$([[ "$reuse_key" = true ]] && echo "reuse" || echo "new")"
   done
   echo
   echo "Old files are archived in $archive_root/<fqdn>/<date> first. Nothing is deleted."
@@ -453,8 +453,8 @@ supersede_entries() {
   local fqdn="$1" keep status=0 serial
   keep=$(normalize_serial "$2")
   while IFS= read -r serial; do
-    [ -n "$serial" ] || continue
-    [ "$(normalize_serial "$serial")" != "$keep" ] || continue
+    [[ -n "$serial" ]] || continue
+    [[ "$(normalize_serial "$serial")" != "$keep" ]] || continue
     if ! openssl ca -config "$base_dir/openssl.cnf/cert.cnf" ${ca_options[@]+"${ca_options[@]}"} \
       -revoke "$base_dir/newcerts/$serial.pem" -crl_reason superseded >>"$log" 2>&1; then
       print_error "Cannot mark database entry $serial of $fqdn as superseded."
@@ -466,7 +466,7 @@ supersede_entries() {
 
 # Function to set unique_subject to no for the renewals
 disable_unique_subject() {
-  if [ -f "$attr_file" ]; then
+  if [[ -f "$attr_file" ]]; then
     attr_original=$(cat "$attr_file")
   else
     attr_created=true
@@ -477,13 +477,13 @@ disable_unique_subject() {
 
 # Function to restore index.txt.attr to its original content
 restore_unique_subject() {
-  [ "$attr_changed" = true ] || return 0
+  [[ "$attr_changed" = true ]] || return 0
   if ! database_is_unique "$db_dir/index.txt"; then
     print_warning "index.txt has valid entries with the same name. unique_subject stays 'no' in $attr_file. Revoke or remove the extra entries and set it back to 'yes'."
     attr_changed=false
     return 0
   fi
-  if [ "$attr_created" = true ]; then
+  if [[ "$attr_created" = true ]]; then
     rm -f "$attr_file"
   else
     printf '%s\n' "$attr_original" >"$attr_file"
@@ -499,7 +499,7 @@ archive_certificate() {
   dir="$archive_root/$fqdn/$stamp"
   until (umask 077 && mkdir "$dir") 2>/dev/null; do
     n=$((n + 1))
-    [ "$n" -lt 100 ] || return 1
+    [[ "$n" -lt 100 ]] || return 1
     dir="$archive_root/$fqdn/$stamp-$n"
   done
   archive_dir="$dir"
@@ -514,7 +514,7 @@ archive_certificate() {
     "private/certificates/$fqdn.key" \
     "csr/$fqdn.pem" \
     "extfiles/$fqdn.cnf"; do
-    [ -f "$base_dir/$rel" ] || continue
+    [[ -f "$base_dir/$rel" ]] || continue
     (umask 077 && mkdir -p "$archive_dir/$(dirname "$rel")" && cp -p "$base_dir/$rel" "$archive_dir/$rel") || return 1
   done
 }
@@ -548,20 +548,20 @@ check_renewal() {
     print_error "The new certificate has already expired."
     return 1
   }
-  [ "$(openssl x509 -in "$cert" -noout -serial)" != "$old_serial" ] || {
+  [[ "$(openssl x509 -in "$cert" -noout -serial)" != "$old_serial" ]] || {
     print_error "The certificate was not replaced (same serial number)."
     return 1
   }
-  [ "$(openssl x509 -in "$cert" -noout -pubkey 2>/dev/null)" = "$(openssl pkey -in "$key" -pubout 2>/dev/null)" ] || {
+  [[ "$(openssl x509 -in "$cert" -noout -pubkey 2>/dev/null)" = "$(openssl pkey -in "$key" -pubout 2>/dev/null)" ]] || {
     print_error "The new certificate does not match the private key."
     return 1
   }
-  [ "$(get_san "$cert")" = "$old_san" ] || {
+  [[ "$(get_san "$cert")" = "$old_san" ]] || {
     print_error "The names of the new certificate differ from the old certificate."
     return 1
   }
-  if [ -f "$haproxy" ]; then
-    [ "$(stat -c %a "$haproxy")" = "600" ] || {
+  if [[ -f "$haproxy" ]]; then
+    [[ "$(stat -c %a "$haproxy")" = "600" ]] || {
       print_error "The HAProxy bundle does not have mode 600."
       return 1
     }
@@ -579,10 +579,10 @@ check_renewal() {
 run_hooks() {
   local fqdn="$1" hook status=0
   local haproxy="$certs_certificates_dir/${fqdn}_haproxy.pem"
-  [ -f "$haproxy" ] || haproxy=""
-  [ -d "$hooks_dir" ] || return 0
+  [[ -f "$haproxy" ]] || haproxy=""
+  [[ -d "$hooks_dir" ]] || return 0
   for hook in "$hooks_dir"/*; do
-    [ -f "$hook" ] && [ -x "$hook" ] || continue
+    [[ -f "$hook" ]] && [[ -x "$hook" ]] || continue
     if ! "$hook" "$fqdn" "$certs_certificates_dir/$fqdn.pem" "$certs_certificates_dir/${fqdn}_chain_bundle.pem" \
       "$private_certificates_dir/$fqdn.key" "$haproxy" >>"$log" 2>&1 9>&-; then
       print_error "Hook failed: $hook (see $log)"
@@ -612,19 +612,19 @@ renew_certificate() {
   renewal_in_progress="$fqdn"
 
   # Select the certificate script. The names come from the old certificate.
-  if [ "$fqdn" = "localhost" ]; then
+  if [[ "$fqdn" = "localhost" ]]; then
     script="$certificate_script_dir/cert_ecdsa_localhost.sh"
     args=(--non-interactive)
   else
     script="$certificate_script_dir/cert_${plan_algo[$i]}_${plan_kind[$i]}.sh"
     args=(--fqdn "$fqdn")
-    [ -z "${plan_ip[$i]}" ] || args+=(--ip "${plan_ip[$i]}")
+    [[ -z "${plan_ip[$i]}" ]] || args+=(--ip "${plan_ip[$i]}")
     # Only a client certificate needs --www; a server certificate always has it
-    if [ "${plan_kind[$i]}" = "client" ] && [ "${plan_www[$i]}" = true ]; then
+    if [[ "${plan_kind[$i]}" = "client" ]] && [[ "${plan_www[$i]}" = true ]]; then
       args+=(--www)
     fi
   fi
-  [ "$reuse_key" = false ] || args+=(--reuse-key)
+  [[ "$reuse_key" = false ]] || args+=(--reuse-key)
 
   if TLS_LOCK_HELD=1 bash "$script" "${args[@]}" </dev/null >"$log" 2>&1 && check_renewal "$fqdn" "$old_serial" "$old_san"; then
     # From here the new certificate is in use, so an interrupt must not restore
@@ -655,7 +655,7 @@ renew_certificate() {
 # renewal. It runs from the INT and TERM traps.
 # shellcheck disable=SC2329
 on_interrupt() {
-  if [ -n "$renewal_in_progress" ]; then
+  if [[ -n "$renewal_in_progress" ]]; then
     print_warning "Interrupted during the renewal of $renewal_in_progress."
     if restore_archive; then
       echo "The old files of $renewal_in_progress were restored from $archive_dir." >&2
@@ -674,12 +674,12 @@ preflight
 # made, so the plan matches the database. The certificate scripts that this
 # script starts skip the lock (TLS_LOCK_HELD=1), and the hooks do not inherit
 # it (9>&-), so a hook cannot keep it.
-[ "$dry_run" = true ] || acquire_lock 2 0 "Another renewal or certificate script is running."
+[[ "$dry_run" = true ]] || acquire_lock 2 0 "Another renewal or certificate script is running."
 select_targets
 warn_ca_certificates
 
-if [ "${#plan_fqdn[@]}" -eq 0 ]; then
-  if [ "$plan_failed" -gt 0 ]; then
+if [[ "${#plan_fqdn[@]}" -eq 0 ]]; then
+  if [[ "$plan_failed" -gt 0 ]]; then
     exit 1
   fi
   echo "Nothing to renew."
@@ -688,12 +688,12 @@ fi
 
 print_plan
 
-if [ "$dry_run" = true ]; then
-  [ "$plan_failed" -eq 0 ] || exit 1
+if [[ "$dry_run" = true ]]; then
+  [[ "$plan_failed" -eq 0 ]] || exit 1
   exit 0
 fi
 
-if [ "$assume_yes" = false ] && ! confirm; then
+if [[ "$assume_yes" = false ]] && ! confirm; then
   echo "Cancelled. Nothing was changed."
   exit 0
 fi
@@ -712,7 +712,7 @@ restore_unique_subject
 
 echo
 print_cyan "Renewed: $renewed. Failed: $((failed + plan_failed))."
-if [ "$((failed + plan_failed))" -gt 0 ]; then
+if [[ "$((failed + plan_failed))" -gt 0 ]]; then
   exit 1
 fi
 exit 0

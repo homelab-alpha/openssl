@@ -215,7 +215,7 @@ parse_arguments() {
       exit 2
       ;;
     *)
-      [ -z "$target_fqdn" ] || {
+      [[ -z "$target_fqdn" ]] || {
         print_error "Give only one FQDN."
         exit 2
       }
@@ -225,27 +225,27 @@ parse_arguments() {
     esac
   done
 
-  if [ "$crl_only" = true ]; then
-    [ -z "$target_fqdn" ] || {
+  if [[ "$crl_only" = true ]]; then
+    [[ -z "$target_fqdn" ]] || {
       print_error "--crl-only does not take an FQDN."
       exit 2
     }
-    [ "$generate_crl" = true ] || {
+    [[ "$generate_crl" = true ]] || {
       print_error "--crl-only and --no-crl cannot be used together."
       exit 2
     }
-  elif [ -n "$authority" ]; then
-    [ -z "$target_fqdn" ] || {
+  elif [[ -n "$authority" ]]; then
+    [[ -z "$target_fqdn" ]] || {
       print_error "Use either an FQDN or --authority, not both."
       exit 2
     }
   else
-    [ -n "$target_fqdn" ] || {
+    [[ -n "$target_fqdn" ]] || {
       print_error "Give an FQDN, or use --authority or --crl-only."
       exit 2
     }
   fi
-  if [ "$reason" = "caCompromise" ] && [ -z "$authority" ]; then
+  if [[ "$reason" = "caCompromise" ]] && [[ -z "$authority" ]]; then
     print_error "--reason caCompromise can only be used together with --authority."
     exit 2
   fi
@@ -263,7 +263,7 @@ preflight() {
 
   enter_home 2
 
-  [ -f "$config_file" ] || {
+  [[ -f "$config_file" ]] || {
     print_error "Required file not found: $config_file"
     exit 2
   }
@@ -280,16 +280,16 @@ preflight() {
     "$issuer_key" \
     "$index_file" \
     "$(dirname "$index_file")/crlnumber"; do
-    if [ ! -f "$file" ]; then
+    if [[ ! -f "$file" ]]; then
       print_error "Required file not found: $file"
       missing=true
     fi
   done
-  [ -d "$crl_dir" ] || {
+  [[ -d "$crl_dir" ]] || {
     print_error "Directory not found: $crl_dir"
     missing=true
   }
-  [ "$missing" = false ] || exit 2
+  [[ "$missing" = false ]] || exit 2
 
   # The authority that signs must still be usable to sign the CRL
   if ! openssl x509 -in "$issuer_cert" -noout -checkend 0 >/dev/null 2>&1; then
@@ -329,7 +329,7 @@ has_revoked_entry() {
 # Function to select the certificate of an authority to revoke
 select_authority() {
   local serial enddate
-  if [ ! -f "$authority_cert" ]; then
+  if [[ ! -f "$authority_cert" ]]; then
     print_error "Certificate not found: $authority_cert"
     exit 2
   fi
@@ -348,7 +348,7 @@ select_authority() {
 select_targets() {
   local serial cert enddate
 
-  if [ -n "$authority" ]; then
+  if [[ -n "$authority" ]]; then
     select_authority
     return
   fi
@@ -365,9 +365,9 @@ select_targets() {
   }
 
   while IFS= read -r serial; do
-    [ -n "$serial" ] || continue
+    [[ -n "$serial" ]] || continue
     cert="$newcerts_dir/$serial.pem"
-    if [ ! -f "$cert" ]; then
+    if [[ ! -f "$cert" ]]; then
       print_error "The certificate file of serial $serial is missing: $cert"
       exit 2
     fi
@@ -377,7 +377,7 @@ select_targets() {
     plan_expires+=("${enddate#notAfter=}")
   done < <(list_valid_serials "$target_fqdn")
 
-  if [ "${#plan_serials[@]}" -eq 0 ]; then
+  if [[ "${#plan_serials[@]}" -eq 0 ]]; then
     if has_revoked_entry "$target_fqdn"; then
       print_error "No valid certificate found for $target_fqdn. It is already revoked."
     else
@@ -397,10 +397,10 @@ print_plan() {
   done
   echo
   echo "The database entry in $index_file is marked as revoked. No file is deleted."
-  if [ -n "$authority" ]; then
+  if [[ -n "$authority" ]]; then
     print_warning "Clients that use the CRL then refuse every certificate below this authority."
   fi
-  if [ "$generate_crl" = true ]; then
+  if [[ "$generate_crl" = true ]]; then
     echo "A new CRL is generated in $crl_file."
   fi
 }
@@ -429,13 +429,13 @@ revoke_entries() {
   done
 
   # No valid entry may be left
-  if [ "$status" -eq 0 ]; then
-    if [ -n "$authority" ]; then
+  if [[ "$status" -eq 0 ]]; then
+    if [[ -n "$authority" ]]; then
       if entry_is_valid "$index_file" "$authority_cert"; then
         print_error "The certificate of '$authority' still has a valid entry in $index_file."
         status=1
       fi
-    elif [ -n "$(list_valid_serials "$target_fqdn")" ]; then
+    elif [[ -n "$(list_valid_serials "$target_fqdn")" ]]; then
       print_error "$target_fqdn still has a valid entry in $index_file."
       status=1
     fi
@@ -447,13 +447,13 @@ revoke_entries() {
 create_crl() {
   local stamp count
   stamp=$(date -u +%Y%m%dT%H%M%SZ)
-  if [ -z "$log" ]; then
+  if [[ -z "$log" ]]; then
     (umask 077 && mkdir -p "$database_backup_dir") || return 1
     log="$database_backup_dir/crl.$stamp.log"
   fi
 
   # Keep the previous CRL
-  if [ -f "$crl_file" ]; then
+  if [[ -f "$crl_file" ]]; then
     (umask 077 && mkdir -p "$crl_backup_dir" && cp -p "$crl_file" "$crl_backup_dir/$(basename "$crl_file" .pem).$stamp.pem") || {
       print_error "Cannot save the previous CRL. The CRL was not changed."
       return 1
@@ -486,23 +486,23 @@ preflight
 # Prevent a revocation during a renewal. The lock is taken before the plan is
 # made, so the plan matches the database. The commands that this script starts
 # do not inherit the lock (9>&-).
-[ "$dry_run" = true ] || acquire_lock 2 0 "A renewal, a revocation, or a certificate script is running."
+[[ "$dry_run" = true ]] || acquire_lock 2 0 "A renewal, a revocation, or a certificate script is running."
 
 target_name="${target_fqdn:-$authority}"
 backup_name="index.txt"
-[ -z "$authority" ] || backup_name="index.txt.$(basename "$(dirname "$index_file")")"
+[[ -z "$authority" ]] || backup_name="index.txt.$(basename "$(dirname "$index_file")")"
 
-if [ "$crl_only" = false ]; then
+if [[ "$crl_only" = false ]]; then
   select_targets
   print_plan
-  if [ "$dry_run" = true ]; then
+  if [[ "$dry_run" = true ]]; then
     exit 0
   fi
-  if [ "$assume_yes" = false ] && ! confirm; then
+  if [[ "$assume_yes" = false ]] && ! confirm; then
     echo "Cancelled. Nothing was changed."
     exit 0
   fi
-elif [ "$dry_run" = true ]; then
+elif [[ "$dry_run" = true ]]; then
   echo "A new CRL would be generated in $crl_file."
   exit 0
 fi
@@ -510,7 +510,7 @@ fi
 prepare_signer
 status=0
 
-if [ "$crl_only" = false ]; then
+if [[ "$crl_only" = false ]]; then
   backup_database || {
     print_error "Cannot save a copy of index.txt. Nothing was changed."
     exit 1
@@ -519,18 +519,18 @@ if [ "$crl_only" = false ]; then
 fi
 
 # Generate the CRL, also after a partial failure, so it matches the database
-if [ "$generate_crl" = true ]; then
+if [[ "$generate_crl" = true ]]; then
   create_crl || status=1
 fi
 
-if [ "$status" -ne 0 ]; then
+if [[ "$status" -ne 0 ]]; then
   exit 1
 fi
 
-if [ "$crl_only" = false ]; then
+if [[ "$crl_only" = false ]]; then
   echo
   print_cyan "Revoked $target_name. The files of the certificate are still in place; stop using them."
-  if [ -n "$authority" ]; then
+  if [[ -n "$authority" ]]; then
     echo "Create the authority again with --replace, and then the certificates below it."
   fi
 fi
