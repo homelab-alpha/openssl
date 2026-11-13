@@ -306,6 +306,35 @@ if unique_subject_enabled "$db_dir/index.txt.attr" && [[ "$cn_exists" == "true" 
   exit 2
 fi
 
+# The subject alternative names of the certificate
+if [[ "$localhost" == "true" ]]; then
+  san_names="DNS:${fqdn}, DNS:*.${fqdn}"
+elif [[ "$fqdn" == \*.* ]]; then
+  # A wildcard already covers www.<domain>, and www.*.<domain> is not valid.
+  # Add the domain itself instead, because a wildcard does not cover it.
+  san_names="DNS:${fqdn}"
+  [[ "$role" == "client" ]] || san_names+=", DNS:${fqdn#\*.}"
+elif [[ "$role" == "server" || "$add_www" == "true" ]]; then
+  san_names="DNS:${fqdn}, DNS:www.${fqdn}"
+else
+  san_names="DNS:${fqdn}"
+fi
+
+# Check the names against the name constraints of the authorities, so a name
+# that the clients would refuse is reported before anything is created
+for authority in "$certs_intermediate_dir/ca.pem" "$certs_dir/root/root_ca.pem" "$certs_dir/root/trusted_id.pem"; do
+  [[ -f "$authority" ]] || continue
+  IFS=',' read -r -a san_list <<<"${san_names// /}${ipv4// /}"
+  for san in "${san_list[@]}"; do
+    if ! name_is_permitted "$san" "$authority"; then
+      print_error "${san#*:} is outside the name constraints of $(basename "$authority" .pem). Permitted:"
+      permitted_names "$authority" | sed 's/^/  /' >&2
+      echo "Create the authority again with a wider --name-constraints list to add a name." >&2
+      exit 2
+    fi
+  done
+done
+
 if [[ "$reuse_key" == "true" && ! -f "$key_file" ]]; then
   print_error "No existing key found for ${fqdn} to reuse."
   exit 2
@@ -343,18 +372,6 @@ openssl req -new "-$digest" -config "$config_file" ${req_subject[@]+"${req_subje
 
 # Create an extfile with all the alternative names
 print_section_header "Create an extfile with all the alternative names"
-if [[ "$localhost" == "true" ]]; then
-  san_names="DNS:${fqdn}, DNS:*.${fqdn}"
-elif [[ "$fqdn" == \*.* ]]; then
-  # A wildcard already covers www.<domain>, and www.*.<domain> is not valid.
-  # Add the domain itself instead, because a wildcard does not cover it.
-  san_names="DNS:${fqdn}"
-  [[ "$role" == "client" ]] || san_names+=", DNS:${fqdn#\*.}"
-elif [[ "$role" == "server" || "$add_www" == "true" ]]; then
-  san_names="DNS:${fqdn}, DNS:www.${fqdn}"
-else
-  san_names="DNS:${fqdn}"
-fi
 if [[ "$role" == "server" ]]; then
   extended_key_usage="serverAuth"
   comment="OpenSSL Generated Server Certificate"

@@ -255,6 +255,11 @@ basicConstraints = critical,CA:true
 # left out by default.
 keyUsage = critical, digitalSignature, keyCertSign, cRLSign
 
+# Name constraints: limit the names that this authority, and every authority
+# below it, can sign for. It is not set by default. The scripts add it with the
+# option --name-constraints; or remove the "#" here and change the names.
+# nameConstraints = critical, permitted;DNS:example.test, permitted;DNS:localhost, permitted;IP:192.168.0.0/255.255.0.0, permitted;IP:127.0.0.0/255.0.0.0
+
 [ v3_intermediate_ca ]
 # Extensions for a typical CA
 # PKIX recommendation.
@@ -266,6 +271,11 @@ basicConstraints = critical, CA:true, pathlen:0
 # prevent it being used as an test self-signed certificate it is best
 # left out by default.
 keyUsage = critical, digitalSignature, keyCertSign, cRLSign
+
+# Name constraints: limit the names that this authority, and every authority
+# below it, can sign for. It is not set by default. The scripts add it with the
+# option --name-constraints; or remove the "#" here and change the names.
+# nameConstraints = critical, permitted;DNS:example.test, permitted;DNS:localhost, permitted;IP:192.168.0.0/255.255.0.0, permitted;IP:127.0.0.0/255.0.0.0
 extendedKeyUsage = serverAuth, clientAuth
 
 # Include email address in subject alt name: another PKIX recommendation

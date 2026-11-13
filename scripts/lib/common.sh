@@ -172,3 +172,100 @@ archive_files() {
   done
   echo "Archive: $dir"
 }
+
+# Function to convert an IPv4 address to a number. Returns 1 when the value is
+# not four decimal octets without leading zeros, each between 0 and 255.
+ipv4_to_number() {
+  local octet octets number=0
+  [[ "$1" =~ ^(0|[1-9][0-9]{0,2})(\.(0|[1-9][0-9]{0,2})){3}$ ]] || return 1
+  IFS='.' read -r -a octets <<<"$1"
+  for octet in "${octets[@]}"; do
+    ((octet <= 255)) || return 1
+    number=$((number * 256 + octet))
+  done
+  printf '%s\n' "$number"
+}
+
+# Function to convert a number to an IPv4 address
+number_to_ipv4() {
+  printf '%d.%d.%d.%d\n' "$((($1 >> 24) & 255))" "$((($1 >> 16) & 255))" "$((($1 >> 8) & 255))" "$(($1 & 255))"
+}
+
+# Function to turn a list of permitted names into the value of the OpenSSL
+# nameConstraints extension. The list is separated by commas. Each item is
+# DNS:<domain> (the domain and its subdomains) or IP:<IPv4 network>/<prefix>
+# (for example IP:192.168.0.0/16). Spaces are ignored. Returns 1 for invalid
+# input.
+build_name_constraints() {
+  local list="${1// /}" item items value prefix number mask result="critical"
+  if [[ -z "$list" || "$list" == ,* || "$list" == *, || "$list" == *,,* ]]; then
+    return 1
+  fi
+  IFS=',' read -r -a items <<<"$list"
+  for item in "${items[@]}"; do
+    case "$item" in
+    DNS:*)
+      value="${item#DNS:}"
+      [[ "$value" != \** ]] || return 1
+      is_valid_fqdn "$value" || return 1
+      result+=", permitted;DNS:$value"
+      ;;
+    IP:*/*)
+      value="${item#IP:}"
+      prefix="${value#*/}"
+      [[ "$prefix" =~ ^(0|[1-9][0-9]?)$ ]] || return 1
+      ((prefix <= 32)) || return 1
+      number=$(ipv4_to_number "${value%/*}") || return 1
+      mask=$(((0xFFFFFFFF << (32 - prefix)) & 0xFFFFFFFF))
+      result+=", permitted;IP:$(number_to_ipv4 "$((number & mask))")/$(number_to_ipv4 "$mask")"
+      ;;
+    *) return 1 ;;
+    esac
+  done
+  printf '%s\n' "$result"
+}
+
+# Function to write a copy of a configuration file with one extra line in an
+# extension section. Returns 1 when the section does not exist.
+# Usage: config_with_extension <configuration file> <section> <line> <output>
+config_with_extension() {
+  awk -v section="$2" -v line="$3" '
+    { print }
+    $0 ~ "^\\[[[:space:]]*" section "[[:space:]]*\\]" { print line; found = 1 }
+    END { exit !found }' "$1" >"$4"
+}
+
+# Function to print the permitted names of the nameConstraints extension of a
+# certificate, one per line (DNS:<domain> or IP:<network>/<netmask>). It prints
+# nothing when the certificate has no such extension.
+permitted_names() {
+  openssl x509 -in "$1" -noout -ext nameConstraints 2>/dev/null | awk '
+    /Permitted:/ { permitted = 1; next }
+    /Excluded:/ { permitted = 0 }
+    permitted { gsub(/^[[:space:]]+|[[:space:]]+$/, ""); if ($0 != "") print }' || true
+}
+
+# Function to check a name against the permitted names of a certificate. A
+# name type (DNS or IP) without a permitted entry is not limited.
+# Usage: name_is_permitted <DNS:name or IP:address> <certificate>
+name_is_permitted() {
+  local type="${1%%:*}" value="${1#*:}" entry constraint limited=false address network mask
+  while IFS= read -r entry; do
+    [[ "$entry" == "$type":* ]] || continue
+    limited=true
+    constraint="${entry#*:}"
+    if [[ "$type" == "DNS" ]]; then
+      if [[ "${value,,}" == "${constraint,,}" || "${value,,}" == *".${constraint#.}" ]]; then
+        return 0
+      fi
+    else
+      address=$(ipv4_to_number "$value") || continue
+      network=$(ipv4_to_number "${constraint%/*}") || continue
+      mask=$(ipv4_to_number "${constraint#*/}") || continue
+      if (((address & mask) == network)); then
+        return 0
+      fi
+    fi
+  done < <(permitted_names "$2")
+  [[ "$limited" == "false" ]]
+}

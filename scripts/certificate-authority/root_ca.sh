@@ -13,11 +13,18 @@
 # put in place after all checks passed. An existing key and certificate are
 # copied to the archive first.
 
-# Usage: ./root_ca.sh [--no-passphrase] [-h|--help]
+# Usage: ./root_ca.sh [--no-passphrase] [--name-constraints <list>] [-h|--help]
 #
 # Options:
 #  --no-passphrase  Do not encrypt the private key. Anyone who can read the
 #                   file can then sign certificates.
+#  --name-constraints <list>
+#                   Limit the names that this authority, and every authority
+#                   below it, can sign for. The list is separated by commas:
+#                   DNS:<domain> (the domain and its subdomains) and
+#                   IP:<IPv4 network>/<prefix>. For example
+#                   DNS:example.test,DNS:localhost,IP:192.168.0.0/16,IP:127.0.0.0/8
+#                   Can be repeated. Without this option there is no limit.
 #  -h, --help       Show this help.
 #
 # Without --no-passphrase the script asks for a new passphrase, or reads it
@@ -27,6 +34,10 @@
 
 # Notes:
 # - The certificates are for a homelab and for testing.
+# - With --name-constraints, clients refuse a certificate for a name outside
+#   the list. Name the DNS names and the IP networks: a type that is not in
+#   the list is not limited. Add DNS:localhost and IP:127.0.0.0/8 when you use
+#   the localhost certificate. To change the list, create the authority again.
 # - Keep the passphrase. Without it the key cannot sign a new intermediate CA.
 # - Overwriting the root CA requires a new intermediate CA and new
 #   certificates.
@@ -52,6 +63,7 @@ cleanup() {
 
 use_passphrase=true
 work_dir=""
+name_constraints_list=""
 key_passphrase=""
 signer_passphrase=""
 
@@ -60,6 +72,14 @@ while [[ $# -gt 0 ]]; do
   --no-passphrase)
     use_passphrase=false
     shift
+    ;;
+  --name-constraints)
+    [[ -n "${2:-}" ]] || {
+      print_error "--name-constraints needs a list, for example DNS:example.test,IP:192.168.0.0/16."
+      exit 2
+    }
+    name_constraints_list+="${name_constraints_list:+,}$2"
+    shift 2
     ;;
   -h | --help)
     show_usage '^# Notes:'
@@ -71,6 +91,16 @@ while [[ $# -gt 0 ]]; do
     ;;
   esac
 done
+
+# Validate the permitted names and build the value of the extension
+name_constraints=""
+if [[ -n "$name_constraints_list" ]]; then
+  name_constraints=$(build_name_constraints "$name_constraints_list") || {
+    print_error "Invalid --name-constraints list: $name_constraints_list"
+    echo "Use DNS:<domain> and IP:<IPv4 network>/<prefix>, separated by commas (for example DNS:example.test,IP:192.168.0.0/16)." >&2
+    exit 2
+  }
+fi
 
 require_openssl 2
 
@@ -166,7 +196,23 @@ TLS_KEY_PASSPHRASE="$key_passphrase" openssl req -new -sha384 -config "$config_f
 
 # Generate Root Certificate Authority
 print_section_header "Generate Root Certificate Authority"
-TLS_SIGNER_PASSPHRASE="$signer_passphrase" openssl ca -config "$config_file" -extensions v3_ca -rand_serial -notext -batch \
+# With --name-constraints the extension is added to a copy of the configuration
+# file. The file in $HOME/tls/openssl.cnf is not changed.
+sign_config="$config_file"
+if [[ -n "$name_constraints" ]]; then
+  if grep -Eq '^[[:space:]]*nameConstraints[[:space:]]*=' "$config_file"; then
+    print_error "$config_file already sets nameConstraints. Remove that line, or run without --name-constraints."
+    exit 2
+  fi
+  sign_config="$work_dir/sign.cnf"
+  config_with_extension "$config_file" "v3_ca" "nameConstraints = $name_constraints" "$sign_config" || {
+    print_error "The section [ v3_ca ] was not found in $config_file."
+    exit 2
+  }
+  echo "Name constraints: $name_constraints"
+fi
+
+TLS_SIGNER_PASSPHRASE="$signer_passphrase" openssl ca -config "$sign_config" -extensions v3_ca -rand_serial -notext -batch \
   ${signer_options[@]+"${signer_options[@]}"} -in "$new_csr" -days 7305 -out "$new_cert"
 
 # Create Root Certificate Authority Chain Bundle

@@ -283,6 +283,55 @@ done
 expect 0 "certificate with an old configuration file" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
   --fqdn legacy.example.test
 
+echo "=== Name constraints ==="
+# A second home directory with authorities that have name constraints
+first_home="$HOME"
+export HOME="$test_root/home_constraints"
+mkdir -p "$HOME"
+limited="$HOME/tls"
+expect 0 "setup for the name constraints" bash "$scripts_dir/tls_directory_setup.sh"
+expect 2 "invalid name constraints are refused" bash "$scripts_dir/certificate-authority/trusted_id.sh" \
+  --name-constraints "example.test"
+check "refused option creates no key" test ! -e "$limited/private/root/trusted_id.pem"
+expect 0 "trusted identity with name constraints" bash "$scripts_dir/certificate-authority/trusted_id.sh" \
+  --name-constraints "DNS:test,DNS:localhost,IP:0.0.0.0/0"
+expect 0 "root CA with name constraints" bash "$scripts_dir/certificate-authority/root_ca.sh" \
+  --name-constraints "DNS:example.test,DNS:lab.test,DNS:localhost" --name-constraints "IP:192.168.0.0/16,IP:127.0.0.0/8"
+expect 0 "intermediate CA with name constraints" bash "$scripts_dir/intermediate-certificate-authority/ca.sh" \
+  --name-constraints "DNS:example.test, DNS:localhost, IP:192.168.1.77/16, IP:127.0.0.0/8"
+check "intermediate CA holds the critical extension" bash -c \
+  "openssl x509 -in '$limited/certs/intermediate/ca.pem' -noout -text | grep -q 'Name Constraints: critical'"
+check "the network address is normalized" bash -c \
+  "openssl x509 -in '$limited/certs/intermediate/ca.pem' -noout -text | grep -q 'IP:192.168.0.0/255.255.0.0'"
+check "the configuration file is not changed" cmp -s "$repo_dir/openssl.cnf/ca.cnf" "$limited/openssl.cnf/ca.cnf"
+expect 0 "certificate for a permitted name" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn app.example.test --ip 192.168.1.10
+expect 0 "wildcard certificate for a permitted name" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn '*.wild.example.test'
+expect 0 "localhost certificate with name constraints" bash "$scripts_dir/certificate/cert_ecdsa_localhost.sh" \
+  --non-interactive
+expect 2 "name outside the intermediate CA is refused" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn app.lab.test
+expect 2 "name outside every authority is refused" bash "$scripts_dir/certificate/cert_ecdsa_client.sh" \
+  --fqdn app.other.test
+expect 2 "name that only ends with a permitted name is refused" bash "$scripts_dir/certificate/cert_ecdsa_client.sh" \
+  --fqdn notexample.test
+expect 2 "IP address outside the networks is refused" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn ip.example.test --ip 10.0.0.1
+check "refused names leave no key" bash -c "! ls '$limited'/private/certificates/ | grep -Eq 'lab|other|notexample|ip\.'"
+check "refused names leave no database entry" bash -c "! grep -Eq 'lab|other|notexample|ip\.' '$limited/db/index.txt'"
+expect 0 "verify passes with name constraints" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
+expect 0 "renewal with name constraints" bash "$scripts_dir/renew_tls_certificates.sh" --yes app.example.test
+# OpenSSL itself refuses a name outside the constraints, also without the check of the script
+openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:P-384 -nodes -subj "/CN=app.other.test" \
+  -keyout "$test_root/outside.key" -out "$test_root/outside.csr" >/dev/null 2>&1
+printf 'subjectAltName = DNS:app.other.test\n' >"$test_root/outside.ext"
+openssl ca -config "$limited/openssl.cnf/cert.cnf" -rand_serial -notext -batch -in "$test_root/outside.csr" \
+  -out "$test_root/outside.pem" -extfile "$test_root/outside.ext" >/dev/null 2>&1
+expect 2 "openssl verify refuses a name outside the constraints" openssl verify \
+  -CAfile "$limited/certs/intermediate/ca_chain_bundle.pem" "$test_root/outside.pem"
+export HOME="$first_home"
+
 echo "=== Old script names ==="
 expect 0 "ssl_certificate_status.sh starts the new script" bash "$scripts_dir/ssl_certificate_status.sh"
 

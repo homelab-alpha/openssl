@@ -71,6 +71,9 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
   the certificates of the authorities, and `db/` for the server and client
   certificates. The authority scripts read the path from the configuration file
   (`config_database`), because an older file can name the shared database.
+- Name constraints are optional and never a default: the authority scripts add
+  the extension only with `--name-constraints`, and `cert.sh` checks a name
+  against the authorities before it creates anything.
 - Script headers use `# Script Name:` and `# Description:`.
 - The name `ssl` is replaced by `tls`. The old names stay for backward
   compatibility until the next major version: `ssl_*.sh`, `renew_ssl_*.sh`,

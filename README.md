@@ -36,7 +36,8 @@ certificates for a homelab.
       1. [Requirements](#requirements)
       2. [Installation](#installation)
       3. [Passphrases of the authority keys](#passphrases-of-the-authority-keys)
-      4. [Upgrading from an older version](#upgrading-from-an-older-version)
+      4. [Name constraints (optional)](#name-constraints-optional)
+      5. [Upgrading from an older version](#upgrading-from-an-older-version)
    5. [Migrating from ssl to tls](#migrating-from-ssl-to-tls)
    6. [Monitoring and Renewal](#monitoring-and-renewal)
       1. [Check the expiry](#check-the-expiry)
@@ -185,6 +186,31 @@ unattended renewal is then not possible. Protect `~/tls/private`.
 
 When an authority is created again, the old key and certificate are copied to
 `~/tls/archive/_ca/` first.
+
+### Name constraints (optional)
+
+By default an authority can sign a certificate for every name. A device that
+trusts your trusted identity then also trusts a certificate for any other
+domain, when someone gets hold of an authority key. The option
+`--name-constraints` limits the names that an authority, and every authority
+below it, can sign for. It is not set by default.
+
+```bash
+new-root-ca --name-constraints "DNS:example.test,DNS:localhost,IP:192.168.0.0/16,IP:127.0.0.0/8"
+new-ca      --name-constraints "DNS:example.test,DNS:localhost,IP:192.168.0.0/16,IP:127.0.0.0/8"
+```
+
+- `DNS:<domain>` permits the domain and its subdomains. `IP:<network>/<prefix>`
+  permits an IPv4 network.
+- A type that is not in the list is not limited. Name both the DNS names and the
+  IP networks.
+- Add `DNS:localhost` and `IP:127.0.0.0/8` when you use `new-cert-localhost`.
+- The certificate scripts refuse a name outside the list before they create
+  anything. Clients refuse such a certificate too.
+- The list is part of the certificate of the authority. To change it, create the
+  authority again, and then the authorities and certificates below it.
+- `new-trusted-id` has the same option. Not every client applies the limit of a
+  certificate in its trust store, so also set it for the root CA.
 
 ### Upgrading from an older version
 
