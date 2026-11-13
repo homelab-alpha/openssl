@@ -2,8 +2,8 @@
 
 # Script Name: renew_tls_certificates.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 1.2.2
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 1.3.0
 
 # Description:
 # This script renews server and client certificates before they expire. It
@@ -80,16 +80,14 @@
 # the new certificate was issued, the new entry is marked in the same way and
 # the old files are restored. If the script cannot repair the database, it
 # leaves unique_subject at "no" and prints a warning.
-# The script must run with $HOME as the current directory, because the
-# OpenSSL configuration files use HOME = . . The script changes to it itself.
+# The script changes to $HOME, because configuration files that were copied
+# to $HOME/tls/openssl.cnf before version 0.2.0 use HOME = . .
+
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 
 # Define directory paths
-# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
-base_dir="$HOME/tls"
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  base_dir="$HOME/ssl"
-  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
-fi
+set_base_dir
 certs_dir="$base_dir/certs"
 private_dir="$base_dir/private"
 db_dir="$base_dir/db"
@@ -118,6 +116,7 @@ plan_fqdn=()
 plan_algo=()
 plan_kind=()
 plan_ip=()
+plan_www=()
 plan_expires=()
 plan_failed=0
 attr_changed=false
@@ -125,21 +124,8 @@ attr_created=false
 attr_original=""
 renewed=0
 failed=0
-
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
-
-# Function to print an error message
-print_error() {
-  echo "[ERROR] $1" >&2
-}
-
-# Function to print a warning message
-print_warning() {
-  echo -e "\e[33m[WARNING] $1\e[0m" >&2
-}
+renewal_in_progress=""
+renewal_old_serial=""
 
 # Function to show the help text
 show_help() {
@@ -149,11 +135,6 @@ show_help() {
 # Function to check that a value is a positive integer
 is_number() {
   [[ "$1" =~ ^[0-9]+$ ]]
-}
-
-# Function to check that a value is a usable FQDN
-is_valid_fqdn() {
-  [[ -n "$1" && "$1" =~ ^[A-Za-z0-9*][A-Za-z0-9._*-]*$ && "$1" != *..* ]]
 }
 
 # Function to parse arguments
@@ -233,10 +214,7 @@ preflight() {
     exit 2
   }
 
-  cd "$HOME" || {
-    print_error "Cannot change to $HOME."
-    exit 2
-  }
+  enter_home 2
 
   for file in \
     "$certs_intermediate_dir/ca.pem" \
@@ -254,7 +232,7 @@ preflight() {
     print_error "Directory not found: $certs_certificates_dir"
     missing=true
   }
-  for file in cert_rsa_server cert_ecdsa_server cert_rsa_client cert_ecdsa_client cert_ecdsa_localhost; do
+  for file in cert cert_rsa_server cert_ecdsa_server cert_rsa_client cert_ecdsa_client cert_ecdsa_localhost; do
     if [ ! -f "$certificate_script_dir/$file.sh" ]; then
       print_error "Certificate script not found: $certificate_script_dir/$file.sh"
       missing=true
@@ -300,7 +278,7 @@ is_revoked() {
 
 # Function to detect the kind of a certificate and add it to the plan
 plan_certificate() {
-  local fqdn="$1" cert="$certs_certificates_dir/$1.pem" text algo kind enddate token ips=() ip="" wildcard_domain=""
+  local fqdn="$1" cert="$certs_certificates_dir/$1.pem" text algo kind enddate token ips=() ip="" wildcard_domain="" www=false
 
   if [ ! -f "$cert" ]; then
     print_error "No certificate found for $fqdn in $certs_certificates_dir."
@@ -353,7 +331,8 @@ plan_certificate() {
     fi
     while IFS= read -r token; do
       case "$token" in
-      "DNS:$fqdn" | "DNS:www.$fqdn") ;;
+      "DNS:$fqdn") ;;
+      "DNS:www.$fqdn") www=true ;;
       "DNS:${wildcard_domain:-$fqdn}") ;;
       IPAddress:*) ips+=("${token#IPAddress:}") ;;
       *)
@@ -386,6 +365,7 @@ plan_certificate() {
   plan_algo+=("$algo")
   plan_kind+=("$kind")
   plan_ip+=("$ip")
+  plan_www+=("$www")
   plan_expires+=("${enddate#notAfter=}")
 }
 
@@ -436,13 +416,6 @@ print_plan() {
   done
   echo
   echo "Old files are archived in $archive_root/<fqdn>/<date> first. Nothing is deleted."
-}
-
-# Function to ask for confirmation
-confirm() {
-  local answer
-  read -r -p "Do you want to continue? (yes/no): " answer
-  [[ "$answer" == "yes" ]]
 }
 
 # Function to normalize a serial number (uppercase, without leading zeros)
@@ -623,6 +596,8 @@ renew_certificate() {
 
   old_serial=$(openssl x509 -in "$certs_certificates_dir/$fqdn.pem" -noout -serial)
   old_san=$(get_san "$certs_certificates_dir/$fqdn.pem")
+  renewal_old_serial="$old_serial"
+  renewal_in_progress="$fqdn"
 
   # Select the certificate script. The names come from the old certificate.
   if [ "$fqdn" = "localhost" ]; then
@@ -632,10 +607,17 @@ renew_certificate() {
     script="$certificate_script_dir/cert_${plan_algo[$i]}_${plan_kind[$i]}.sh"
     args=(--fqdn "$fqdn")
     [ -z "${plan_ip[$i]}" ] || args+=(--ip "${plan_ip[$i]}")
+    # Only a client certificate needs --www; a server certificate always has it
+    if [ "${plan_kind[$i]}" = "client" ] && [ "${plan_www[$i]}" = true ]; then
+      args+=(--www)
+    fi
   fi
   [ "$reuse_key" = false ] || args+=(--reuse-key)
 
   if bash "$script" "${args[@]}" </dev/null >"$log" 2>&1 9>&- && check_renewal "$fqdn" "$old_serial" "$old_san"; then
+    # From here the new certificate is in use, so an interrupt must not restore
+    # the old files.
+    renewal_in_progress=""
     # The old entry is superseded by the new certificate
     supersede_entries "$fqdn" "$(openssl x509 -in "$certs_certificates_dir/$fqdn.pem" -noout -serial)" || failed=$((failed + 1))
     echo "Renewed: $(openssl x509 -in "$certs_certificates_dir/$fqdn.pem" -noout -enddate)"
@@ -653,12 +635,46 @@ renew_certificate() {
   fi
   # A certificate that was issued but rolled back must not stay valid in the database
   supersede_entries "$fqdn" "$old_serial" || true
+  renewal_in_progress=""
   return 1
+}
+
+# Function to restore the old files when the script is interrupted during a
+# renewal. It runs from the INT and TERM traps.
+# shellcheck disable=SC2329
+on_interrupt() {
+  if [ -n "$renewal_in_progress" ]; then
+    print_warning "Interrupted during the renewal of $renewal_in_progress."
+    if restore_archive; then
+      echo "The old files of $renewal_in_progress were restored from $archive_dir." >&2
+    else
+      print_error "Restoring failed. Copy the files from $archive_dir back by hand."
+    fi
+    supersede_entries "$renewal_in_progress" "$renewal_old_serial" || true
+  fi
+  exit 1
+}
+
+# Function to prevent two renewals at the same time. The lock is taken before
+# the plan is made, so the plan matches the database. The scripts and hooks
+# that this script starts do not inherit the lock (9>&-), so a hook cannot
+# keep it.
+acquire_lock() {
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>"$lock_file"
+    flock -n 9 || {
+      print_error "Another renewal is running."
+      exit 2
+    }
+  else
+    print_warning "flock is not installed, so overlapping renewals are not prevented."
+  fi
 }
 
 # Main process
 parse_arguments "$@"
 preflight
+[ "$dry_run" = true ] || acquire_lock
 select_targets
 warn_ca_certificates
 
@@ -682,20 +698,8 @@ if [ "$assume_yes" = false ] && ! confirm; then
   exit 0
 fi
 
-# Prevent two renewals at the same time. The scripts and hooks that this script
-# starts do not inherit the lock (9>&-), so a hook cannot keep it.
-if command -v flock >/dev/null 2>&1; then
-  exec 9>"$lock_file"
-  flock -n 9 || {
-    print_error "Another renewal is running."
-    exit 2
-  }
-else
-  print_warning "flock is not installed, so overlapping renewals are not prevented."
-fi
-
 trap restore_unique_subject EXIT
-trap 'exit 1' INT TERM
+trap on_interrupt INT TERM
 disable_unique_subject
 
 for i in "${!plan_fqdn[@]}"; do

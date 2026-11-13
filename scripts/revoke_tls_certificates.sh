@@ -2,8 +2,8 @@
 
 # Script Name: revoke_tls_certificates.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 1.1.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 1.2.0
 
 # Description:
 # This script revokes a server or client certificate and generates a
@@ -47,19 +47,16 @@
 # the configuration of HAProxy or nginx.
 # A CRL is valid for 30 days (default_crl_days in cert.cnf). Generate a new CRL
 # with --crl-only before it expires.
-# The script must run with $HOME as the current directory, because the
-# OpenSSL configuration files use HOME = . . The script changes to it itself.
+# The script changes to $HOME, because configuration files that were copied
+# to $HOME/tls/openssl.cnf before version 0.2.0 use HOME = . .
 # The renewal script (renew_tls_certificates.sh) marks the old entry of a
 # renewed certificate as superseded in the same way. Run --crl-only afterwards
 # to put those entries in the CRL.
 
 # Define directory paths
-# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
-base_dir="$HOME/tls"
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  base_dir="$HOME/ssl"
-  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
-fi
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
+set_base_dir
 certs_dir="$base_dir/certs"
 private_dir="$base_dir/private"
 db_dir="$base_dir/db"
@@ -86,29 +83,9 @@ plan_serials=()
 plan_expires=()
 log=""
 
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
-
-# Function to print an error message
-print_error() {
-  echo "[ERROR] $1" >&2
-}
-
-# Function to print a warning message
-print_warning() {
-  echo -e "\e[33m[WARNING] $1\e[0m" >&2
-}
-
 # Function to show the help text
 show_help() {
   sed -n '/^# Usage:/,/^# Exit codes:/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'
-}
-
-# Function to check that a value is a usable FQDN
-is_valid_fqdn() {
-  [[ -n "$1" && "$1" =~ ^[A-Za-z0-9*][A-Za-z0-9._*-]*$ && "$1" != *..* ]]
 }
 
 # Function to check that a reason is supported
@@ -192,10 +169,7 @@ preflight() {
     exit 2
   }
 
-  cd "$HOME" || {
-    print_error "Cannot change to $HOME."
-    exit 2
-  }
+  enter_home 2
 
   for file in \
     "$certs_intermediate_dir/ca.pem" \
@@ -288,13 +262,6 @@ print_plan() {
   fi
 }
 
-# Function to ask for confirmation
-confirm() {
-  local answer
-  read -r -p "Do you want to continue? (yes/no): " answer
-  [[ "$answer" == "yes" ]]
-}
-
 # Function to save a copy of the database before it changes
 backup_database() {
   local stamp
@@ -363,9 +330,25 @@ create_crl() {
   print_warning "The certificates have no CRL distribution point. Install the CRL where it is used. Generate a new one with --crl-only before it expires."
 }
 
+# Function to prevent a revocation during a renewal. The lock is taken before
+# the plan is made, so the plan matches the database. The commands that this
+# script starts do not inherit the lock (9>&-).
+acquire_lock() {
+  if command -v flock >/dev/null 2>&1; then
+    exec 9>"$lock_file"
+    flock -n 9 || {
+      print_error "A renewal or revocation is running."
+      exit 2
+    }
+  else
+    print_warning "flock is not installed, so overlapping runs are not prevented."
+  fi
+}
+
 # Main process
 parse_arguments "$@"
 preflight
+[ "$dry_run" = true ] || acquire_lock
 
 if [ "$crl_only" = false ]; then
   select_targets
@@ -380,18 +363,6 @@ if [ "$crl_only" = false ]; then
 elif [ "$dry_run" = true ]; then
   echo "A new CRL would be generated in $crl_file."
   exit 0
-fi
-
-# Prevent a revocation during a renewal. The commands that this script starts
-# do not inherit the lock (9>&-).
-if command -v flock >/dev/null 2>&1; then
-  exec 9>"$lock_file"
-  flock -n 9 || {
-    print_error "A renewal or revocation is running."
-    exit 2
-  }
-else
-  print_warning "flock is not installed, so overlapping runs are not prevented."
 fi
 
 status=0
