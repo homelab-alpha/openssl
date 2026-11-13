@@ -2,30 +2,29 @@
 
 # Script Name: verify_tls_certificates.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 2.6.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 3.0.0
 
 # Description:
-# This script automates the process of verifying TLS certificates by
-# checking their validity against their corresponding chain of trust. The
-# verification process includes the following steps:
-# - Checking individual certificates against their root certificate authority.
-# - Verifying intermediate certificates in the certificate chain.
-# - Validating the certificate chain (from the leaf certificate up to the
-#   root certificate).
+# This script verifies TLS certificates against their chain of trust:
+# - The trusted identity against itself.
+# - The root certificate authority against the trusted identity.
+# - The intermediate certificate authority against the root chain.
+# - A server or client certificate against the intermediate chain, and its
+#   chain bundle and HAProxy bundle when they exist.
 #
-# It provides both a verbose mode for detailed output and a non-verbose mode
-# for summary results. Additionally, it supports certificate validation for
-# various certificate types (Trusted Identity, Root, Intermediate, and general
-# certificates).
+# The result of each check comes from the exit status of openssl verify. The
+# script never changes a file.
 #
-# Usage: ./verify_tls_certificates.sh [-v|--verbose] <certificate_name>
+# Usage: ./verify_tls_certificates.sh [-v|--verbose] [-h|--help] <certificate_name>
 #
 # Arguments:
-#  -v, --verbose        Enable verbose mode for detailed output during
-#                       verification.
-#  <certificate_name>    The name of the certificate to verify (e.g.,
-#                       root_ca.pem, ca.pem).
+#  -v, --verbose        Show the output of openssl verify for each check.
+#  -h, --help           Show this help.
+#  <certificate_name>   The certificate to verify: trusted_id.pem,
+#                       root_ca.pem, ca.pem, or the name of a server or
+#                       client certificate without extension (for example
+#                       server.example.test).
 
 # Example usage:
 #  - ./verify_tls_certificates.sh root_ca.pem  (verifies root certificate
@@ -33,74 +32,55 @@
 #  - ./verify_tls_certificates.sh -v ca.pem    (verifies intermediate
 #    certificate with verbose output)
 
+# Exit codes:
+#  0  All checks passed.
+#  1  One or more checks failed, or a file was not found.
+#  2  Wrong usage.
+
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
+
 # Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
-base_dir="$HOME/tls"
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  base_dir="$HOME/ssl"
-  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
-fi
+set_base_dir
 certs_dir="$base_dir/certs"
 
 # Set directories for various components
-certs_certs_root_dir="$certs_dir/root"
-certs_certs_intermediate_dir="$certs_dir/intermediate"
-certs_certs_certificates_dir="$certs_dir/certificates"
+certs_root_dir="$certs_dir/root"
+certs_intermediate_dir="$certs_dir/intermediate"
+certs_certificates_dir="$certs_dir/certificates"
 
 # Default to non-verbose mode
 verbose=false
 file_name=""
+failures=0
 
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
-
-# Function to print section headers.
-print_section_header() {
-  echo ""
-  print_cyan "=== $1 ==="
-}
-
-# Function to check if a file exists
-check_file_exists() {
-  local file_path=$1
-  if [ ! -f "$file_path" ]; then
-    echo -e "$file_path: \033[31m[FAIL] - File not found\033[0m"
-    return 1
-  fi
-  return 0
-}
-
-# Function to verify a certificate
+# Function to verify a certificate against a chain file
 verify_certificate() {
-  local cert_path="$1"
-  local chain_path="$2"
+  local title="$1" cert_path="$2" chain_path="$3" result status=0 file options=()
 
-  # Check if files exist before verifying
-  check_file_exists "$cert_path" || return
-  check_file_exists "$chain_path" || return
+  print_section_header "$title"
+  for file in "$cert_path" "$chain_path"; do
+    if [[ ! -f "$file" ]]; then
+      echo -e "$file: \033[31m[FAIL] - File not found\033[0m"
+      failures=$((failures + 1))
+      return
+    fi
+  done
 
-  if [ "$verbose" = true ]; then
-    result=$(openssl verify -show_chain -CAfile "$chain_path" "$cert_path" 2>&1)
-  else
-    result=$(openssl verify -CAfile "$chain_path" "$cert_path" 2>&1)
-  fi
+  [[ "$verbose" == "false" ]] || options=(-show_chain)
+  result=$(openssl verify ${options[@]+"${options[@]}"} -CAfile "$chain_path" "$cert_path" 2>&1) || status=$?
 
-  if [[ "$result" == *"OK"* ]]; then
+  if [[ "$status" -eq 0 ]]; then
     echo -e "$cert_path: \033[32m[PASS]\033[0m"
   else
     echo -e "$cert_path: \033[31m[FAIL]\033[0m"
+    failures=$((failures + 1))
   fi
 
-  # Show verbose output if enabled
-  if [ "$verbose" = true ]; then
-    echo -e "Verbose output: $result"
+  # Show verbose output if enabled, and always for a failed check
+  if [[ "$verbose" == "true" || "$status" -ne 0 ]]; then
+    echo "$result"
   fi
-}
-
-# Function to prompt for certificate file name if not passed as argument
-prompt_for_file_name() {
-  read -r -p "Enter the name of the certificate to verify: " file_name
 }
 
 # Function to parse arguments
@@ -111,7 +91,19 @@ parse_arguments() {
       verbose=true
       shift
       ;;
+    -h | --help)
+      show_usage '^# Example usage:'
+      exit 0
+      ;;
+    -*)
+      print_error "Unknown option: $1"
+      exit 2
+      ;;
     *)
+      [[ -z "$file_name" ]] || {
+        print_error "Give only one certificate name."
+        exit 2
+      }
       file_name="$1"
       shift
       ;;
@@ -119,81 +111,78 @@ parse_arguments() {
   done
 
   # If no file name is provided, prompt the user for it
-  if [ -z "$file_name" ]; then
-    prompt_for_file_name
+  if [[ -z "$file_name" ]]; then
+    read -r -p "Enter the name of the certificate to verify: " file_name
+  fi
+  if [[ -z "$file_name" || "$file_name" == */* ]]; then
+    print_error "'$file_name' is not a certificate name."
+    exit 2
+  fi
+}
+
+# Functions to verify each level of the chain
+verify_trusted_id() {
+  verify_certificate "Verify Trusted Identity against Trusted Identity" \
+    "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.pem"
+}
+
+verify_root_ca() {
+  verify_certificate "Verify Root Certificate Authority against Trusted Identity" \
+    "$certs_root_dir/root_ca.pem" "$certs_root_dir/trusted_id.pem"
+  verify_certificate "Verify Root Certificate Authority Chain against Trusted Identity" \
+    "$certs_root_dir/root_ca_chain_bundle.pem" "$certs_root_dir/trusted_id.pem"
+}
+
+verify_intermediate_ca() {
+  verify_certificate "Verify Intermediate Certificate Authority against the Root Certificate Authority" \
+    "$certs_intermediate_dir/ca.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
+  verify_certificate "Verify Intermediate Certificate Authority Chain against the Root Certificate Authority Chain" \
+    "$certs_intermediate_dir/ca_chain_bundle.pem" "$certs_root_dir/root_ca_chain_bundle.pem"
+}
+
+verify_leaf() {
+  local name="$1"
+  verify_certificate "Verify Certificate against the Intermediate Certificate Chain" \
+    "$certs_certificates_dir/${name}.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
+  verify_certificate "Verify Certificate Chain against the Intermediate Certificate Chain" \
+    "$certs_certificates_dir/${name}_chain_bundle.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
+  # Only server certificates have a HAProxy bundle
+  if [[ -f "$certs_certificates_dir/${name}_haproxy.pem" ]]; then
+    verify_certificate "Verify Haproxy Certificate Chain against the Intermediate Certificate Chain" \
+      "$certs_certificates_dir/${name}_haproxy.pem" "$certs_intermediate_dir/ca_chain_bundle.pem"
   fi
 }
 
 # Main process
-
-# Parse command-line options
 parse_arguments "$@"
+require_openssl 2
 
-# Dynamically determine which sections to verify based on the certificate
+# Determine which sections to verify based on the certificate
 case "$file_name" in
 "trusted_id.pem")
-  # Only verify the Trusted Identity certificate
-  print_section_header "Verify Trusted Identity against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/trusted_id.pem" "$certs_certs_root_dir/trusted_id.pem"
+  verify_trusted_id
   ;;
 "root_ca.pem")
-  # Verify Trusted Identity certificate and Root Certificate Authority
-  print_section_header "Verify Trusted Identity against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/trusted_id.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Root Certificate Authority against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/root_ca.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Root Certificate Authority Chain against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/root_ca_chain_bundle.pem" "$certs_certs_root_dir/trusted_id.pem"
+  verify_trusted_id
+  verify_root_ca
   ;;
 "ca.pem")
-  # Verify Trusted Identity certificate, Root Certificate Authority, and Intermediate Certificate Authority
-  print_section_header "Verify Trusted Identity against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/trusted_id.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Root Certificate Authority against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/root_ca.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Root Certificate Authority Chain against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/root_ca_chain_bundle.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Intermediate Certificate Authority against the Root Certificate Authority"
-  verify_certificate "$certs_certs_intermediate_dir/ca.pem" "$certs_certs_root_dir/root_ca_chain_bundle.pem"
-
-  print_section_header "Verify Intermediate Certificate Authority Chain against the Root Certificate Authority Chain"
-  verify_certificate "$certs_certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certs_root_dir/root_ca_chain_bundle.pem"
+  verify_trusted_id
+  verify_root_ca
+  verify_intermediate_ca
   ;;
 *)
-  # If it's any other certificate (e.g., general certificate), verify everything
-  print_section_header "Verify Trusted Identity against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/trusted_id.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Root Certificate Authority against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/root_ca.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Root Certificate Authority Chain against Trusted Identity"
-  verify_certificate "$certs_certs_root_dir/root_ca_chain_bundle.pem" "$certs_certs_root_dir/trusted_id.pem"
-
-  print_section_header "Verify Intermediate Certificate Authority against the Root Certificate Authority"
-  verify_certificate "$certs_certs_intermediate_dir/ca.pem" "$certs_certs_root_dir/root_ca_chain_bundle.pem"
-
-  print_section_header "Verify Intermediate Certificate Authority Chain against the Root Certificate Authority Chain"
-  verify_certificate "$certs_certs_intermediate_dir/ca_chain_bundle.pem" "$certs_certs_root_dir/root_ca_chain_bundle.pem"
-
-  print_section_header "Verify Certificate against the Certificate Chain"
-  verify_certificate "$certs_certs_certificates_dir/${file_name}.pem" "$certs_certs_certificates_dir/${file_name}_chain_bundle.pem"
-
-  print_section_header "Verify Certificate against the Intermediate Certificate Chain"
-  verify_certificate "$certs_certs_certificates_dir/${file_name}.pem" "$certs_certs_intermediate_dir/ca_chain_bundle.pem"
-
-  print_section_header "Verify Certificate Chain against the Intermediate Certificate Chain"
-  verify_certificate "$certs_certs_certificates_dir/${file_name}_chain_bundle.pem" "$certs_certs_intermediate_dir/ca_chain_bundle.pem"
-
-  print_section_header "Verify Haproxy Certificate Chain against the Intermediate Certificate Chain"
-  verify_certificate "$certs_certs_certificates_dir/${file_name}_haproxy.pem" "$certs_certs_intermediate_dir/ca_chain_bundle.pem"
+  verify_trusted_id
+  verify_root_ca
+  verify_intermediate_ca
+  verify_leaf "${file_name%.pem}"
   ;;
 esac
 
-# Exit successfully
+echo
+if [[ "$failures" -gt 0 ]]; then
+  print_error "$failures check(s) failed."
+  exit 1
+fi
+print_cyan "All checks passed."
 exit 0
