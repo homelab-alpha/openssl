@@ -68,7 +68,7 @@ source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib/common.sh"
 cleanup() {
   # A certificate that was issued but not put in place must not stay valid in
   # the database
-  if [[ "$issued" == "true" && "$installed" == "false" ]]; then
+  if [[ "$issued" == "true" && "$installed" == "false" && -s "$new_cert" ]]; then
     if revoke_entry "$new_cert" cessationOfOperation; then
       print_warning "The script failed after the certificate was issued. Its database entry is marked as revoked."
     else
@@ -96,6 +96,7 @@ assume_yes=false
 replacing=false
 issued=false
 installed=false
+install_status=0
 old_cert=""
 name_constraints_list=""
 key_passphrase=""
@@ -271,9 +272,11 @@ if [[ -n "$name_constraints" ]]; then
   echo "Name constraints: $name_constraints"
 fi
 
+# From here the database can hold the new entry, also when the command is
+# interrupted
+issued=true
 TLS_SIGNER_PASSPHRASE="$signer_passphrase" openssl ca -config "$sign_config" -extensions v3_intermediate_ca -rand_serial -notext -batch \
   ${signer_options[@]+"${signer_options[@]}"} -in "$new_csr" -days 1826 -out "$new_cert"
-issued=true
 
 # Create Intermediate Certificate Authority Chain Bundle
 print_section_header "Create Intermediate Certificate Authority Chain Bundle"
@@ -301,11 +304,11 @@ install_files \
   "$new_cert" "$cert_file" \
   "$new_cert" "${cert_file%.pem}.crt" \
   "$new_chain" "${cert_file%.pem}_chain_bundle.pem" \
-  "$new_chain" "${cert_file%.pem}_chain_bundle.crt" || {
-  print_error "Cannot put the new files in place. The existing files were not changed."
-  exit 1
-}
-installed=true
+  "$new_chain" "${cert_file%.pem}_chain_bundle.crt" || install_status=$?
+# After a failed rename the new files are partly in use, so the new database
+# entry stays valid
+[[ "$install_status" -eq 1 ]] || installed=true
+[[ "$install_status" -eq 0 ]] || exit 1
 
 # The new certificate is in use, so the old entry is superseded
 if [[ "$replacing" == "true" ]] && entry_is_valid "$database" "$old_cert"; then

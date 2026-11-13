@@ -224,10 +224,7 @@ archive_files "_ca/trusted_id" "$key_file" "$cert_file" "$certs_root_dir/trusted
 install_files \
   "$new_key" "$key_file" \
   "$new_cert" "$cert_file" \
-  "$new_cert" "$certs_root_dir/trusted_id.crt" || {
-  print_error "Cannot put the new files in place. The existing files were not changed."
-  exit 1
-}
+  "$new_cert" "$certs_root_dir/trusted_id.crt" || exit 1
 echo
 print_cyan "--> trusted_id.pem and trusted_id.crt"
 

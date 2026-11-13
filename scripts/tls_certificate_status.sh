@@ -36,8 +36,9 @@
 
 # Notes:
 # The certificates are for a homelab and for testing.
-# A certificate that is revoked in $HOME/tls/db/index.txt (status R) is shown
-# with the status REVOKED. It is not counted for the exit code.
+# A certificate that is revoked in the database of its authority (status R) is
+# shown with the status REVOKED. It is not counted for the exit code. This also
+# holds for the root CA and the intermediate CA.
 # The .crt copies and the chain and HAProxy bundles are skipped, because they
 # contain the same certificates as the .pem files.
 # Dates are calculated in Bash from the OpenSSL notAfter value, so the script
@@ -165,16 +166,23 @@ get_cn() {
   echo "${subject%%,*}"
 }
 
-# Function to check if a certificate is revoked in the database (status R)
+# Function to check if a certificate is revoked (status R) in the database of
+# the authority that signed it. The trusted identity signs itself and has no
+# database entry.
 is_revoked() {
-  local serial
-  [ -f "$index_file" ] || return 1
-  serial=$(openssl x509 -in "$1" -noout -serial 2>/dev/null)
-  serial="${serial#serial=}"
-  awk -F'\t' -v s="$serial" '
-    function norm(x) { x = toupper(x); sub(/^0+/, "", x); return x }
-    $1 == "R" && norm($4) == norm(s) { found = 1 }
-    END { exit !found }' "$index_file"
+  local file="$1" location="$2" config database
+  case "$location" in
+  leaf) config="$base_dir/openssl.cnf/cert.cnf" ;;
+  intermediate) config="$base_dir/openssl.cnf/ca.cnf" ;;
+  root)
+    [ "$(basename "$file")" = "root_ca.pem" ] || return 1
+    config="$base_dir/openssl.cnf/root_ca.cnf"
+    ;;
+  *) return 1 ;;
+  esac
+  # Without a readable configuration file, use the database of the certificates
+  database=$(config_database "$config") || database="$index_file"
+  entry_is_revoked "$database" "$file"
 }
 
 # Function to check one certificate and store the result
@@ -208,7 +216,7 @@ check_certificate() {
   fi
 
   # Use -checkend for the decision: it is the authoritative OpenSSL check.
-  if is_revoked "$file"; then
+  if is_revoked "$file" "$location"; then
     state="REVOKED"
   elif ! openssl x509 -in "$file" -noout -checkend 0 >/dev/null 2>&1; then
     state="EXPIRED"

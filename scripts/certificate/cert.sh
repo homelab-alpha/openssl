@@ -98,7 +98,7 @@ build_ip_san() {
 cleanup() {
   # A certificate that was issued but not put in place must not stay valid in
   # the database: it would block the next run for this FQDN.
-  if [[ "$issued" == "true" && "$installed" == "false" ]]; then
+  if [[ "$issued" == "true" && "$installed" == "false" && -s "$new_cert" ]]; then
     if TLS_CA_PASSPHRASE_VALUE="$ca_passphrase" openssl ca -config "$config_file" ${ca_options[@]+"${ca_options[@]}"} \
       -revoke "$new_cert" -crl_reason cessationOfOperation >/dev/null 2>&1; then
       print_warning "The script failed after the certificate was issued. Its database entry is marked as revoked."
@@ -124,6 +124,7 @@ reuse_key=false
 work_dir=""
 issued=false
 installed=false
+install_status=0
 ca_passphrase=""
 ca_options=()
 
@@ -304,6 +305,13 @@ for dir in "$certs_certificates_dir" "$private_certificates_dir" "$csr_dir" "$ex
 done
 [[ "$missing" == "false" ]] || exit 2
 
+# A revoked intermediate CA must not issue certificates
+ca_database=$(config_database "$base_dir/openssl.cnf/ca.cnf" 2>/dev/null) || ca_database=""
+if [[ -n "$ca_database" ]] && entry_is_revoked "$ca_database" "$certs_intermediate_dir/ca.pem"; then
+  print_error "The intermediate CA is revoked. Create it again with ca.sh --replace."
+  exit 2
+fi
+
 # The key of the intermediate CA can be encrypted (ca.sh --passphrase)
 ca_options=()
 if key_is_encrypted "$private_dir/intermediate/ca.pem"; then
@@ -363,6 +371,15 @@ if [[ "$reuse_key" == "true" && ! -f "$key_file" ]]; then
   print_error "No existing key found for ${fqdn} to reuse."
   exit 2
 fi
+if [[ "$reuse_key" == "true" ]]; then
+  # The key type must be the one that this script creates
+  key_marker="modulus:"
+  [[ "$algo" == "rsa" ]] || key_marker="ASN1 OID:"
+  if ! openssl pkey -in "$key_file" -noout -text 2>/dev/null | grep -q "^${key_marker}"; then
+    print_error "The existing key of ${fqdn} is not an ${algo^^} key. Use the script for that key type, or run without --reuse-key."
+    exit 2
+  fi
+fi
 
 # Work in a temporary folder that only the owner can read
 work_dir=$(umask 077 && mktemp -d "$base_dir/.cert.XXXXXX")
@@ -413,9 +430,11 @@ fi
 
 # Generate Certificate
 print_section_header "Generate Certificate"
+# From here the database can hold the new entry, also when the command is
+# interrupted
+issued=true
 TLS_CA_PASSPHRASE_VALUE="$ca_passphrase" openssl ca -config "$config_file" ${ca_options[@]+"${ca_options[@]}"} \
   -rand_serial -notext -batch -in "$new_csr" -out "$new_cert" -extfile "$new_extfile"
-issued=true
 
 # Create Certificate Chain Bundle
 print_section_header "Create Certificate Chain Bundle"
@@ -454,11 +473,11 @@ fi
 if [[ "$role" == "server" ]]; then
   install_list+=("$new_haproxy" "$certs_certificates_dir/${fqdn}_haproxy.pem")
 fi
-install_files "${install_list[@]}" || {
-  print_error "Cannot put the new files in place. The existing files were not changed."
-  exit 1
-}
-installed=true
+install_files "${install_list[@]}" || install_status=$?
+# After a failed rename the new files are partly in use, so the new database
+# entry stays valid
+[[ "$install_status" -eq 1 ]] || installed=true
+[[ "$install_status" -eq 0 ]] || exit 1
 echo
 print_cyan "--> ${fqdn}.pem and ${fqdn}.crt"
 print_cyan "--> ${fqdn}_chain_bundle.pem and ${fqdn}_chain_bundle.crt"

@@ -296,6 +296,8 @@ acquire_lock() {
 # target, with the mode of the source. Only when all copies succeeded they are
 # renamed, and an interrupt is ignored during that step. So a failed copy, a
 # full disk, or Ctrl+C never leaves a mix of old and new files.
+# Returns 1 when a copy failed (nothing was changed), and 2 when a rename
+# failed (the files are partly replaced).
 # Usage: install_files <source> <target> [<source> <target>]...
 install_files() {
   local -a staged=() targets=()
@@ -306,6 +308,7 @@ install_files() {
     shift 2
     if ! cp -pf "$source" "$target.new.$$"; then
       rm -f "$target.new.$$" ${staged[@]+"${staged[@]}"}
+      print_error "Cannot write $target. The existing files were not changed."
       return 1
     fi
     staged+=("$target.new.$$")
@@ -314,8 +317,12 @@ install_files() {
   saved_traps=$(trap -p INT TERM)
   trap '' INT TERM
   for i in "${!staged[@]}"; do
-    mv -f "${staged[$i]}" "${targets[$i]}" || status=1
+    if ! mv -f "${staged[$i]}" "${targets[$i]}"; then
+      print_error "Cannot replace ${targets[$i]}. The new file is ${staged[$i]}."
+      status=2
+    fi
   done
+  trap - INT TERM
   eval "$saved_traps"
   return "$status"
 }
@@ -327,15 +334,27 @@ database_is_unique() {
   [[ -z "$(awk -F'\t' '$1 == "V" { if (seen[$NF]++) print $NF }' "$1")" ]]
 }
 
-# Function to check if the certificate in $2 has a valid entry (status V) in
-# the database in $1
-entry_is_valid() {
+# Function to check if the certificate in $3 has an entry with the status in $1
+# (V for valid, R for revoked) in the database in $2
+entry_has_status() {
   local serial
-  serial=$(openssl x509 -in "$2" -noout -serial 2>/dev/null) || return 1
-  awk -F'\t' -v s="${serial#serial=}" '
+  [[ -f "$2" ]] || return 1
+  serial=$(openssl x509 -in "$3" -noout -serial 2>/dev/null) || return 1
+  awk -F'\t' -v s="${serial#serial=}" -v want="$1" '
     function norm(x) { x = toupper(x); sub(/^0+/, "", x); return x }
-    $1 == "V" && norm($4) == norm(s) { found = 1 }
-    END { exit !found }' "$1"
+    $1 == want && norm($4) == norm(s) { found = 1 }
+    END { exit !found }' "$2"
+}
+
+# Function to check if the certificate in $2 has a valid entry in the database
+# in $1
+entry_is_valid() {
+  entry_has_status V "$1" "$2"
+}
+
+# Function to check if the certificate in $2 is revoked in the database in $1
+entry_is_revoked() {
+  entry_has_status R "$1" "$2"
 }
 
 # State of allow_second_entry

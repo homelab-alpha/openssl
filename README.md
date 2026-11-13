@@ -199,8 +199,12 @@ new-ca --replace --yes    # no questions
 
 `new-root-ca` and `new-trusted-id` have the same options. The script copies the
 old key and certificate to `~/tls/archive/_ca/` first, issues the new
-certificate, and marks the old database entry as superseded. The authorities and
-certificates below a replaced authority must be created again.
+certificate, and marks the old database entry as superseded.
+
+The authorities and certificates below a replaced authority must be created
+again: after a new root CA run `new-ca --replace`, and after a new intermediate
+CA run `openssl-renew --all --within 400 --yes` to issue every certificate
+again.
 
 ### Name constraints (optional)
 
@@ -253,6 +257,9 @@ new-ca      --name-constraints "DNS:example.test, DNS:localhost, IP:192.168.0.0/
 - The Common Name is always the FQDN. Without `--fqdn` the certificate scripts
   ask for the FQDN only.
 - A client certificate no longer has the extended key usage `emailProtection`.
+- `--reuse-key` refuses a key of another type than the script creates.
+- `openssl-status` also shows a revoked root CA or intermediate CA as `REVOKED`,
+  and the certificate scripts refuse to use a revoked intermediate CA.
 - The certificate scripts, the renewal, and the revocation share one lock, so
   two scripts cannot change a database at the same time.
 - `new-tls-directory-setup` warns when `~/tls/private` has a wider mode

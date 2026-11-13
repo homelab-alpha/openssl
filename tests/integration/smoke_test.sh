@@ -287,7 +287,14 @@ expect 2 "verify rejects an unknown option" bash "$scripts_dir/verify_tls_certif
 echo "=== Revocation and CRL ==="
 expect 0 "revoke a certificate" bash "$scripts_dir/revoke_tls_certificates.sh" --yes rsa.example.test
 first_crl=$(crl_number)
-expect 0 "new certificate after a revocation" bash "$scripts_dir/certificate/cert_rsa_server.sh" --fqdn rsa.example.test
+expect 2 "--reuse-key refuses a key of another type" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn rsa.example.test --reuse-key
+check "--reuse-key names the key type" bash -c \
+  "bash '$scripts_dir/certificate/cert_ecdsa_server.sh' --fqdn rsa.example.test --reuse-key 2>&1 | grep -q 'is not an ECDSA key'"
+rsa_key_before=$(sha256sum "$tls/private/certificates/rsa.example.test.pem")
+expect 0 "new certificate after a revocation, with the same key" bash "$scripts_dir/certificate/cert_rsa_server.sh" \
+  --fqdn rsa.example.test --reuse-key
+check "--reuse-key keeps the key" test "$(sha256sum "$tls/private/certificates/rsa.example.test.pem")" = "$rsa_key_before"
 expect 0 "generate a second CRL" bash "$scripts_dir/revoke_tls_certificates.sh" --crl-only
 check "CRL number increases" test "$(crl_number)" -gt "$first_crl"
 
@@ -411,6 +418,9 @@ expect 0 "database of the root CA loads after the replacement" openssl ca -confi
 expect 0 "certificate from the new intermediate CA" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
   --fqdn fresh.example.test
 expect 0 "verify passes for the new intermediate CA" bash "$scripts_dir/verify_tls_certificates.sh" fresh.example.test
+expect 0 "renewal moves a certificate to the new intermediate CA" bash "$scripts_dir/renew_tls_certificates.sh" \
+  --yes app.example.test
+expect 0 "verify passes for the renewed certificate" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
 expect 0 "revoke the intermediate CA (dry run)" bash "$scripts_dir/revoke_tls_certificates.sh" --dry-run --authority ca
 check "dry run revokes nothing" test "$(count_status V "$limited/db/root_ca/index.txt")" = "1"
 expect 0 "revoke the intermediate CA" bash "$scripts_dir/revoke_tls_certificates.sh" --yes --authority ca \
@@ -420,6 +430,10 @@ check "CRL of the root CA lists both certificates" bash -c \
   "openssl crl -in '$limited/crl/root_crl.pem' -noout -text | grep -c 'Serial Number:' | grep -qx 2"
 check "CRL of the root CA has the reason" bash -c \
   "openssl crl -in '$limited/crl/root_crl.pem' -noout -text | grep -q 'CA Compromise'"
+check "status shows the revoked intermediate CA" bash -c \
+  "bash '$scripts_dir/tls_certificate_status.sh' | grep 'intermediate' | grep -q REVOKED"
+expect 2 "a revoked intermediate CA does not issue" bash "$scripts_dir/certificate/cert_ecdsa_client.sh" \
+  --fqdn afterrevoke.example.test
 expect 2 "an authority is not revoked twice" bash "$scripts_dir/revoke_tls_certificates.sh" --yes --authority ca
 check "the database of the certificates is not touched" bash -c "! grep -q 'HA E1' '$limited/db/index.txt'"
 expect 0 "root CA is replaced" bash "$scripts_dir/certificate-authority/root_ca.sh" --replace --yes
