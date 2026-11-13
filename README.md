@@ -35,6 +35,8 @@ certificates for a homelab.
    4. [Getting Started](#getting-started)
       1. [Requirements](#requirements)
       2. [Installation](#installation)
+      3. [Passphrases of the authority keys](#passphrases-of-the-authority-keys)
+      4. [Upgrading from an older version](#upgrading-from-an-older-version)
    5. [Migrating from ssl to tls](#migrating-from-ssl-to-tls)
    6. [Monitoring and Renewal](#monitoring-and-renewal)
       1. [Check the expiry](#check-the-expiry)
@@ -109,6 +111,7 @@ More documentation is on the
 | `scripts/certificate-authority/trusted_id.sh`      | Creates the trusted root certificate (ECDSA) with verification and format conversion.           | `new-trusted-id`          |
 | `scripts/certificate-authority/root_ca.sh`         | Creates the root certificate authority (ECDSA) and its CA chain bundle.                         | `new-root-ca`             |
 | `scripts/intermediate-certificate-authority/ca.sh` | Creates the intermediate certificate authority and its CA chain bundle.                         | `new-ca`                  |
+| `scripts/certificate/cert.sh`                      | Issues a server or client certificate (ECDSA or RSA). The five scripts below start it.          | —                         |
 | `scripts/certificate/cert_ecdsa_localhost.sh`      | Issues an ECDSA certificate for localhost, with a bundle for HAProxy.                           | `new-cert-localhost`      |
 | `scripts/certificate/cert_ecdsa_server.sh`         | Issues an ECDSA server certificate.                                                             | `new-cert-server`         |
 | `scripts/certificate/cert_rsa_server.sh`           | Issues an RSA server certificate.                                                               | `new-cert-rsa-server`     |
@@ -120,6 +123,7 @@ More documentation is on the
 | `scripts/revoke_tls_certificates.sh`               | Revokes a server or client certificate and generates a CRL.                                     | `openssl-revoke`          |
 | `scripts/tls_directory_migrate.sh`                 | Moves the old directory `~/ssl` to `~/tls` and leaves a link behind.                            | `openssl-migrate-tls`     |
 | `scripts/tls_dotfiles_installer.sh`                | Adds the aliases to `~/.bashrc` when they are not there yet.                                    | —                         |
+| `scripts/lib/common.sh`                            | Shared functions. The other scripts load it; it is not a program.                               | —                         |
 
 ### Configuration files
 
@@ -159,7 +163,42 @@ chmod +x scripts/*.sh scripts/*/*.sh
 The installer adds the aliases to `~/.bashrc`. Open a new shell, run
 `new-tls-directory-setup` to create the directory structure, and then use the
 other aliases to create the authorities and certificates. Each script describes
-its usage in its header.
+its usage in its header, and shows it with `--help`.
+
+`new-tls-directory-setup` is safe to run again: it creates what is missing and
+keeps every file that exists. To replace the configuration files in
+`~/tls/openssl.cnf` with the files of the repository, run
+`new-tls-directory-setup --update-config`. Each replaced file is saved first as
+`<name>.cnf.bak-<date>`.
+
+### Passphrases of the authority keys
+
+`new-trusted-id` and `new-root-ca` encrypt the private key with a passphrase
+(AES-256). The scripts ask for it, or read it from the environment variables
+`TLS_TRUSTED_ID_PASSPHRASE` and `TLS_ROOT_CA_PASSPHRASE`. Keep the passphrases:
+without them the keys cannot sign a new authority. Use `--no-passphrase` to
+create a key that is not encrypted.
+
+The key of the intermediate CA is not encrypted, because the certificate scripts
+and the renewal use it at every run. Use `new-ca --passphrase` to encrypt it; an
+unattended renewal is then not possible. Protect `~/tls/private`.
+
+When an authority is created again, the old key and certificate are copied to
+`~/tls/archive/_ca/` first.
+
+### Upgrading from an older version
+
+- The configuration files now use `$ENV::HOME`, so the scripts work from every
+  directory. Files that were copied to `~/tls/openssl.cnf` earlier keep working.
+  Run `new-tls-directory-setup --update-config` to get the new files.
+- The certificate scripts no longer write `db/serial` and `db/crlnumber`. Serial
+  numbers are random, and the CRL number now increases with every CRL.
+- Existing authority keys stay as they are. Only a new trusted identity or root
+  CA gets a passphrase.
+- A client certificate holds only its FQDN. Use `--www` to add `www.<fqdn>`. The
+  renewal keeps the names of an existing certificate.
+- `openssl-verify` exits with `1` when a check fails.
+- The installer no longer removes files from the clone.
 
 ## Migrating from ssl to tls
 
@@ -265,8 +304,8 @@ Good to know:
   `www.<fqdn>`, and IPv4 addresses). For a wildcard FQDN such as
   `*.example.test`, the domain itself (`example.test`) replaces `www.<fqdn>`. A
   certificate with other names is refused.
-- The CA private keys are not encrypted. A renewal that runs unattended can
-  therefore read the intermediate CA key. Protect `~/tls/private`.
+- The private key of the intermediate CA is not encrypted by default. A renewal
+  that runs unattended can therefore read it. Protect `~/tls/private`.
 - Exit codes: `0` success or nothing to renew, `1` a renewal, check, or hook
   failed, and `2` wrong usage or a pre-flight error (nothing was changed).
 
@@ -417,6 +456,15 @@ docker run --rm -e RUN_LOCAL=true -e USE_FIND_ALGORITHM=true \
 For quick formatting of a single file, `npx prettier --write <file>` uses the
 same `.prettierrc`.
 
+The certificate scripts have an integration test. It runs the whole flow (the
+setup, the authorities, one certificate of each kind, verification, revocation,
+and renewal) in a temporary home directory, and never touches your own `~/tls`.
+Every pull request runs it (`test_scripts.yml`). Run it locally with:
+
+```bash
+bash tests/integration/smoke_test.sh
+```
+
 ## Project Structure
 
 ```treeview
@@ -488,6 +536,7 @@ openssl/
 │   │   ├── signing_test.yml                    # Test API-based commit and tag signing
 │   │   ├── stale_issues_and_pull_requests.yml  # Stale issue management
 │   │   ├── sync_labels.yml                     # Label synchronization
+│   │   ├── test_scripts.yml                    # Integration test of the certificate scripts
 │   │   ├── unreproducible_issues.yml           # Unreproducible issue management
 │   │   └── update_changelog.yml                # Changelog entry for merged pull requests
 │   ├── CODEOWNERS                              # Code ownership definitions
@@ -511,6 +560,7 @@ openssl/
 │   │   ├── root_ca.sh                          # Creates the root certificate authority (ECDSA) and its CA chain bundle
 │   │   └── trusted_id.sh                       # Creates the trusted root certificate (ECDSA) with verification and format conversion
 │   ├── certificate/                            # Server, client, and localhost certificate scripts
+│   │   ├── cert.sh                             # Issues a server or client certificate (ECDSA or RSA)
 │   │   ├── cert_ecdsa_client.sh                # Issues an ECDSA client certificate
 │   │   ├── cert_ecdsa_localhost.sh             # Issues an ECDSA certificate for localhost, with a bundle for HAProxy
 │   │   ├── cert_ecdsa_server.sh                # Issues an ECDSA server certificate
@@ -518,6 +568,8 @@ openssl/
 │   │   └── cert_rsa_server.sh                  # Issues an RSA server certificate
 │   ├── intermediate-certificate-authority/     # Intermediate CA script
 │   │   └── ca.sh                               # Creates the intermediate certificate authority and its CA chain bundle
+│   ├── lib/                                    # Shared functions
+│   │   └── common.sh                           # Functions that the other scripts load
 │   ├── renew_ssl_certificates.sh               # Deprecated: starts renew_tls_certificates.sh
 │   ├── renew_tls_certificates.sh               # Renews server and client certificates before they expire
 │   ├── revoke_ssl_certificates.sh              # Deprecated: starts revoke_tls_certificates.sh
@@ -531,6 +583,9 @@ openssl/
 │   ├── tls_dotfiles_installer.sh               # Adds the aliases to `~/.bashrc` when they are not there yet
 │   ├── verify_ssl_certificates.sh              # Deprecated: starts verify_tls_certificates.sh
 │   └── verify_tls_certificates.sh              # Verifies certificates against their chain of trust
+├── tests/                                      # Tests
+│   └── integration/                            # Integration tests
+│       └── smoke_test.sh                       # Runs the whole flow in a temporary home directory
 ├── .editorconfig                               # Editor settings (indent, line endings)
 ├── .gitignore                                  # Git ignore rules
 ├── .gitleaksignore                             # Gitleaks secret scanning allowlist
@@ -581,6 +636,7 @@ on push, pull request, and scheduled triggers.
 | `signing_test.yml`                   | Manual                       | Tests API-based commit and tag signing                        |
 | `stale_issues_and_pull_requests.yml` | Daily schedule, manual       | Marks and closes stale issues and pull requests               |
 | `sync_labels.yml`                    | Push, manual                 | Synchronizes repository labels from `.github/labels.yml`      |
+| `test_scripts.yml`                   | PR, manual                   | Runs the integration test of the certificate scripts          |
 | `unreproducible_issues.yml`          | Issue events, weekly, manual | Manages issues that cannot be reproduced                      |
 | `update_changelog.yml`               | Every 8 hours, manual        | Adds an entry to `CHANGELOG.md` for every merged pull request |
 
