@@ -91,6 +91,7 @@ revoke_entry() {
 
 use_passphrase=false
 work_dir=""
+new_cert=""
 replace=false
 assume_yes=false
 replacing=false
@@ -226,10 +227,11 @@ fi
 # Two scripts must not change the database at the same time
 acquire_lock 2 120 "Another certificate script is still running. Try again later."
 
-# Work in a temporary folder that only the owner can read
-work_dir=$(umask 077 && mktemp -d "$base_dir/.ca.XXXXXX")
+# Work in a temporary folder that only the owner can read. The traps are set
+# first, so an interrupt right after the folder is created still removes it.
 trap cleanup EXIT
 trap 'exit 1' INT TERM
+work_dir=$(umask 077 && mktemp -d "$base_dir/.ca.XXXXXX")
 new_key="$work_dir/key.pem"
 new_csr="$work_dir/csr.pem"
 new_cert="$work_dir/cert.pem"

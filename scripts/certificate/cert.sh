@@ -122,6 +122,7 @@ localhost=false
 non_interactive=false
 reuse_key=false
 work_dir=""
+new_cert=""
 issued=false
 installed=false
 install_status=0
@@ -334,7 +335,7 @@ fi
 # If unique_subject is enabled and Certificate exists, display an error and exit
 if unique_subject_enabled "$db_dir/index.txt.attr" && [[ "$cn_exists" == "true" ]]; then
   print_error "unique_subject is enabled and a valid certificate with Common Name ${fqdn} already exists in index.txt."
-  echo "Revoke it, or run 'openssl ca -updatedb' if it has expired, and try again." >&2
+  echo "Renew it with renew_tls_certificates.sh, or revoke it with revoke_tls_certificates.sh, and try again." >&2
   exit 2
 fi
 
@@ -381,10 +382,11 @@ if [[ "$reuse_key" == "true" ]]; then
   fi
 fi
 
-# Work in a temporary folder that only the owner can read
-work_dir=$(umask 077 && mktemp -d "$base_dir/.cert.XXXXXX")
+# Work in a temporary folder that only the owner can read. The traps are set
+# first, so an interrupt right after the folder is created still removes it.
 trap cleanup EXIT
 trap 'exit 1' INT TERM
+work_dir=$(umask 077 && mktemp -d "$base_dir/.cert.XXXXXX")
 new_key="$work_dir/key.pem"
 new_csr="$work_dir/csr.pem"
 new_extfile="$work_dir/ext.cnf"

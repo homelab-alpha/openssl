@@ -446,6 +446,33 @@ check "no temporary folder or staged file is left" bash -c \
   "! find '$limited' \\( -name '.ca.*' -o -name '.root_ca.*' -o -name '.trusted_id.*' -o -name '*.new.*' \\) | grep -q ."
 export HOME="$first_home"
 
+echo "=== Encrypted key of the intermediate CA ==="
+export HOME="$test_root/home_encrypted"
+mkdir -p "$HOME"
+encrypted="$HOME/tls"
+expect 0 "setup for the encrypted intermediate CA" bash "$scripts_dir/tls_directory_setup.sh"
+expect 0 "trusted identity for the encrypted intermediate CA" bash "$scripts_dir/certificate-authority/trusted_id.sh"
+expect 0 "root CA for the encrypted intermediate CA" bash "$scripts_dir/certificate-authority/root_ca.sh"
+expect 2 "--passphrase needs a passphrase without a terminal" \
+  bash "$scripts_dir/intermediate-certificate-authority/ca.sh" --passphrase
+export TLS_CA_PASSPHRASE="smoke-test-intermediate"
+expect 0 "intermediate CA with --passphrase" bash "$scripts_dir/intermediate-certificate-authority/ca.sh" --passphrase
+check "intermediate CA key is encrypted" grep -q "ENCRYPTED" "$encrypted/private/intermediate/ca.pem"
+expect 0 "certificate with an encrypted intermediate CA key" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn enc.example.test
+expect 0 "renewal with an encrypted intermediate CA key" bash "$scripts_dir/renew_tls_certificates.sh" \
+  --yes enc.example.test
+check "renewal supersedes the old entry" test "$(awk -F'\t' '$1 == "R"' "$encrypted/db/index.txt" | grep -c .)" = "1"
+expect 0 "revocation with an encrypted intermediate CA key" bash "$scripts_dir/revoke_tls_certificates.sh" \
+  --yes enc.example.test
+unset TLS_CA_PASSPHRASE
+expect 2 "certificate script stops without the passphrase" bash "$scripts_dir/certificate/cert_ecdsa_server.sh" \
+  --fqdn enc2.example.test
+expect 2 "renewal stops without the passphrase" bash "$scripts_dir/renew_tls_certificates.sh" --all --within 400 --yes
+expect 2 "revocation stops without the passphrase" bash "$scripts_dir/revoke_tls_certificates.sh" --crl-only
+check "nothing was created without the passphrase" test ! -e "$encrypted/private/certificates/enc2.example.test.pem"
+export HOME="$first_home"
+
 echo "=== Old script names ==="
 expect 0 "ssl_certificate_status.sh starts the new script" bash "$scripts_dir/ssl_certificate_status.sh"
 
