@@ -2,140 +2,161 @@
 
 # Script Name: trusted_id.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 2.6.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 3.0.0
 
 # Description:
-# This script generates and manages a trusted root certificate for a
-# Certificate Authority. It sets up necessary directory paths, renews
-# database serial numbers, generates an ECDSA key, creates a self-signed
-# certificate, verifies the certificate, checks the private key, and
-# converts the certificate to different formats.
+# This script generates the trusted identity: the self-signed certificate at
+# the top of the chain. It generates an ECDSA key that is encrypted with a
+# passphrase, creates the self-signed certificate, verifies it, and checks
+# the private key. The files are put in place after all checks passed. An
+# existing key and certificate are copied to the archive first.
 
-# Usage: ./trusted_id.sh
+# Usage: ./trusted_id.sh [--no-passphrase] [-h|--help]
+#
+# Options:
+#  --no-passphrase  Do not encrypt the private key. Anyone who can read the
+#                   file can then sign certificates.
+#  -h, --help       Show this help.
+#
+# Without --no-passphrase the script asks for a new passphrase, or reads it
+# from the environment variable TLS_TRUSTED_ID_PASSPHRASE.
 
 # Notes:
-# - Ensure you have the correct directory structure for certs and private keys.
-# - Unique subject may cause issues if the Trusted ID already exists.
-# - Overwriting the Trusted ID will require regeneration of the Root CA
-#   and all issued certificates.
+# - The certificates are for a homelab and for testing.
+# - Keep the passphrase. Without it the key cannot sign a new root CA.
+# - Overwriting the trusted identity requires a new root CA, a new intermediate
+#   CA, and new certificates.
+# - The old files are copied to $HOME/tls/archive/_ca/trusted_id/ first.
 
 # Stop script on error
-set -e
+set -Eeuo pipefail
 
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../lib/common.sh"
 
-# Function to generate a random hex value
-generate_random_hex() {
-  openssl rand -hex 16 || return 1
-}
-
-# Function to print section headers.
-print_section_header() {
-  echo
-  print_cyan "=== $1 ==="
-}
-
-# Function to check command success
-check_success() {
-  if [ $? -ne 0 ]; then
-    echo "[ERROR] $1" >&2
-    exit 1
+# Function to remove the temporary folder. It runs from the EXIT trap.
+# shellcheck disable=SC2329
+cleanup() {
+  if [[ -n "$work_dir" && -d "$work_dir" ]]; then
+    rm -rf "$work_dir"
   fi
 }
 
-# Define directory paths
-print_section_header "Define directory paths"
-# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
-base_dir="$HOME/tls"
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  base_dir="$HOME/ssl"
-  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
-fi
-certs_dir="$base_dir/certs"
-private_dir="$base_dir/private"
-db_dir="$base_dir/db"
-openssl_conf_dir="$base_dir/openssl.cnf"
+use_passphrase=true
+work_dir=""
+key_passphrase=""
 
-# Set directories for various components
-certs_root_dir="$certs_dir/root"
-private_root_dir="$private_dir/root"
-
-# Renew db numbers (serial and CRL)
-print_section_header "Renew db numbers (serial and CRL)"
-for type in "serial" "crlnumber"; do
-  for dir in $db_dir; do
-    generate_random_hex >"$dir/$type" || check_success "Failed to generate $type for $dir"
-  done
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --no-passphrase)
+    use_passphrase=false
+    shift
+    ;;
+  -h | --help)
+    show_usage '^# Notes:'
+    exit 0
+    ;;
+  *)
+    print_error "Unknown option: $1"
+    exit 2
+    ;;
+  esac
 done
 
-# Check if unique_subject is enabled and if trusted_id.pem exists
-unique_subject="no"
-if grep -q "^unique_subject\s*=\s*yes" "$db_dir/index.txt.attr" 2>/dev/null; then
-  unique_subject="yes"
-fi
+require_openssl 2
 
-trusted_id_path="$certs_root_dir/trusted_id.pem"
-trusted_id_exists=false
-if [[ -f "$trusted_id_path" ]]; then
-  trusted_id_exists=true
+# Define directory paths
+print_section_header "Define directory paths"
+set_base_dir
+certs_root_dir="$base_dir/certs/root"
+private_root_dir="$base_dir/private/root"
+db_dir="$base_dir/db"
+config_file="$base_dir/openssl.cnf/trusted_id.cnf"
+key_file="$private_root_dir/trusted_id.pem"
+cert_file="$certs_root_dir/trusted_id.pem"
+
+enter_home 2
+
+# Check that everything needed is present, before anything changes
+if [[ ! -f "$config_file" || ! -d "$certs_root_dir" || ! -d "$private_root_dir" ]]; then
+  print_error "The directory structure in $base_dir is not complete. Run tls_directory_setup.sh first."
+  exit 2
 fi
 
 # If unique_subject is enabled and Trusted ID exists, display an error and exit
-if [[ "$unique_subject" == "yes" && "$trusted_id_exists" == "true" ]]; then
-  echo "[ERROR] unique_subject is enabled and Trusted ID already exists." >&2
-  exit 1
-fi
+if [[ -f "$cert_file" ]]; then
+  if unique_subject_enabled "$db_dir/index.txt.attr"; then
+    print_error "unique_subject is enabled and Trusted ID already exists."
+    exit 2
+  fi
 
-# If unique_subject is "no", warn and ask for confirmation
-if [[ "$unique_subject" == "no" && -f "$trusted_id_path" ]]; then
-  print_section_header "⚠️  WARNING: Overwriting Trusted ID"
-
-  echo "[WARNING] Trusted ID already exists and will be OVERWRITTEN!" >&2
-  echo "[WARNING] This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!" >&2
-  echo "[WARNING] If you continue, all issued certificates will become INVALID!" >&2
-
-  read -r -p "Do you want to continue? (yes/no): " confirm
-  if [[ "$confirm" != "yes" ]]; then
+  print_section_header "WARNING: Overwriting Trusted ID"
+  print_warning "Trusted ID already exists and will be OVERWRITTEN!"
+  print_warning "This action will require REGENERATING THE ROOT CA, ALL SUB-CA CERTIFICATES, AND ALL ISSUED CERTIFICATES!"
+  print_warning "If you continue, all issued certificates will become INVALID!"
+  if ! confirm; then
     echo "[INFO] Operation aborted by user." >&2
     exit 1
   fi
 fi
 
+# Ask for the passphrase of the new key
+key_options=()
+pass_options=()
+if [[ "$use_passphrase" == "true" ]]; then
+  get_passphrase key_passphrase TLS_TRUSTED_ID_PASSPHRASE "new trusted identity key" new || exit 2
+  key_options=(-aes-256-cbc -pass env:TLS_KEY_PASSPHRASE)
+  pass_options=(-passin env:TLS_KEY_PASSPHRASE)
+else
+  print_warning "The private key of the trusted identity is not encrypted."
+fi
+
+# Work in a temporary folder that only the owner can read
+work_dir=$(umask 077 && mktemp -d "$base_dir/.trusted_id.XXXXXX")
+trap cleanup EXIT
+trap 'exit 1' INT TERM
+new_key="$work_dir/key.pem"
+new_cert="$work_dir/cert.pem"
+
 # Generate ECDSA key
 print_section_header "Generate ECDSA key"
-openssl ecparam -name secp384r1 -genkey -out "$private_root_dir/trusted_id.pem"
-check_success "Failed to generate ECDSA key"
+(umask 077 && TLS_KEY_PASSPHRASE="$key_passphrase" openssl genpkey -algorithm EC \
+  -pkeyopt ec_paramgen_curve:P-384 -pkeyopt ec_param_enc:named_curve \
+  ${key_options[@]+"${key_options[@]}"} -out "$new_key")
 
-# Generate Certificate Signing Request (CSR)
-print_section_header "Generate Certificate Signing Request"
-openssl req -new -x509 -sha384 -config "$openssl_conf_dir/trusted_id.cnf" -extensions v3_ca -key "$private_root_dir/trusted_id.pem" -days 10956 -out "$certs_root_dir/trusted_id.pem"
-check_success "Failed to generate Certificate Signing Request"
+# Generate the self-signed certificate
+print_section_header "Generate Trusted ID Certificate"
+TLS_KEY_PASSPHRASE="$key_passphrase" openssl req -new -x509 -sha384 -config "$config_file" -extensions v3_ca \
+  -key "$new_key" ${pass_options[@]+"${pass_options[@]}"} -days 10956 -out "$new_cert"
 
 # Perform certificate verifications
-print_section_header "Verify Certificates"
-openssl verify -CAfile "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.pem"
-check_success "Verification failed for certificate"
+print_section_header "Verify Certificate"
+openssl verify -CAfile "$new_cert" "$new_cert"
 
 # Check Private Key.
 print_section_header "Check Private Key"
-openssl ecparam -in "$private_root_dir/trusted_id.pem" -text -noout
-check_success "Failed to check private key"
+TLS_KEY_PASSPHRASE="$key_passphrase" openssl pkey -in "$new_key" ${pass_options[@]+"${pass_options[@]}"} -noout -check
+if [[ "$(openssl x509 -in "$new_cert" -noout -pubkey)" != \
+"$(TLS_KEY_PASSPHRASE="$key_passphrase" openssl pkey -in "$new_key" ${pass_options[@]+"${pass_options[@]}"} -pubout)" ]]; then
+  print_error "The certificate does not match the private key."
+  exit 1
+fi
+echo "The certificate matches the private key."
 
 # Check Certificate.
 print_section_header "Check Certificate"
-openssl x509 -in "$certs_root_dir/trusted_id.pem" -text -noout
-check_success "Failed to check certificate"
+openssl x509 -in "$new_cert" -text -noout
 
-# Convert Certificate from .pem to .crt.
-print_section_header "Convert Trusted ID Certificate Authority from .pem to .crt"
-cp "$certs_root_dir/trusted_id.pem" "$certs_root_dir/trusted_id.crt"
-check_success "Failed to convert Trusted ID Certificate Authority from .pem to .crt"
+# Put the files in place, after a copy of the existing files
+print_section_header "Install the files"
+archive_files "_ca/trusted_id" "$key_file" "$cert_file" "$certs_root_dir/trusted_id.crt"
+mv -f "$new_key" "$key_file"
+chmod 600 "$key_file"
+cp -f "$new_cert" "$cert_file"
+cp -f "$new_cert" "$certs_root_dir/trusted_id.crt"
 echo
-print_cyan "--> trusted_id.crt"
+print_cyan "--> trusted_id.pem and trusted_id.crt"
 
 # Script completion message
 echo
