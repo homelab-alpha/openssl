@@ -80,13 +80,13 @@ default_ca = CA_default   # The default ca section
 
 certs = $ENV::HOME/tls/certs/root   # Where the issued certs are kept
 crl_dir = $ENV::HOME/tls/crl   # Where the issued crl are kept
-database = $ENV::HOME/tls/db/index.txt   # database index file.
+database = $ENV::HOME/tls/db/trusted_id/index.txt   # database index file.
 unique_subject = yes   # Set to 'no' to allow creation of several certs with same subject.
-new_certs_dir = $ENV::HOME/tls/newcerts   # default place for new certs.
+new_certs_dir = $ENV::HOME/tls/newcerts/trusted_id   # default place for new certs.
 
 certificate = $ENV::HOME/tls/certs/root/trusted_id.pem 	# The CA certificate
-serial = $ENV::HOME/tls/db/serial   # The current serial number
-crlnumber = $ENV::HOME/tls/db/crlnumber   # the current crl number must be commented out to leave a V1 CRL
+serial = $ENV::HOME/tls/db/trusted_id/serial   # The current serial number
+crlnumber = $ENV::HOME/tls/db/trusted_id/crlnumber   # the current crl number must be commented out to leave a V1 CRL
 crl = $ENV::HOME/tls/crl/trusted_id_crl.pem   # The current CRL
 private_key = $ENV::HOME/tls/private/root/trusted_id.pem   # The private key
 

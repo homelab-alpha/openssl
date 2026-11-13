@@ -71,7 +71,6 @@ print_section_header "Define directory paths"
 set_base_dir
 certs_root_dir="$base_dir/certs/root"
 private_root_dir="$base_dir/private/root"
-db_dir="$base_dir/db"
 config_file="$base_dir/openssl.cnf/trusted_id.cnf"
 key_file="$private_root_dir/trusted_id.pem"
 cert_file="$certs_root_dir/trusted_id.pem"
@@ -86,7 +85,11 @@ fi
 
 # If unique_subject is enabled and Trusted ID exists, display an error and exit
 if [[ -f "$cert_file" ]]; then
-  if unique_subject_enabled "$db_dir/index.txt.attr"; then
+  database=$(config_database "$config_file") || {
+    print_error "Cannot read the database path from $config_file."
+    exit 2
+  }
+  if unique_subject_enabled "$database.attr"; then
     print_error "unique_subject is enabled and Trusted ID already exists."
     exit 2
   fi

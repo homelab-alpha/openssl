@@ -67,6 +67,10 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
   or a configuration file, and add a check for new behavior.
 - The certificate scripts never write `db/serial` or `db/crlnumber`, and they
   put a key or certificate in place only after the checks passed.
+- Every authority has its own database: `db/trusted_id/` and `db/root_ca/` for
+  the certificates of the authorities, and `db/` for the server and client
+  certificates. The authority scripts read the path from the configuration file
+  (`config_database`), because an older file can name the shared database.
 - Script headers use `# Script Name:` and `# Description:`.
 - The name `ssl` is replaced by `tls`. The old names stay for backward
   compatibility until the next major version: `ssl_*.sh`, `renew_ssl_*.sh`,

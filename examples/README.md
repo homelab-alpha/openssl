@@ -17,5 +17,6 @@ setup.
 
 The example files were made with an earlier version of the scripts. The current
 scripts create the same structure, with some differences: the configuration
-files use `$ENV::HOME`, and the keys of the trusted identity and the root CA are
+files use `$ENV::HOME`, every authority has its own database (`db/trusted_id/`
+and `db/root_ca/`), and the keys of the trusted identity and the root CA are
 encrypted with a passphrase.

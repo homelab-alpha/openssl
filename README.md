@@ -193,6 +193,12 @@ When an authority is created again, the old key and certificate are copied to
   Run `new-tls-directory-setup --update-config` to get the new files.
 - The certificate scripts no longer write `db/serial` and `db/crlnumber`. Serial
   numbers are random, and the CRL number now increases with every CRL.
+- Every authority has its own database: `~/tls/db/trusted_id/` (the root CA),
+  `~/tls/db/root_ca/` (the intermediate CA), and `~/tls/db/` (the certificates).
+  Older versions used `~/tls/db/` for all three. An existing setup keeps working
+  with its old configuration files. `new-tls-directory-setup --update-config`
+  moves the entries of the root CA and the intermediate CA to their own
+  database, after a copy of `index.txt` in `~/tls/archive/_database/`.
 - Existing authority keys stay as they are. Only a new trusted identity or root
   CA gets a passphrase.
 - A client certificate holds only its FQDN. Use `--www` to add `www.<fqdn>`. The

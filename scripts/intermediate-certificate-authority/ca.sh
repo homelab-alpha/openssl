@@ -31,7 +31,9 @@
 # - Overwriting the intermediate CA requires new certificates.
 # - Protect $HOME/tls/private: the key of the intermediate CA is not encrypted.
 # - The serial number is random (openssl ca -rand_serial). The script does not
-#   change db/serial or db/crlnumber.
+#   change the serial or crlnumber file.
+# - The certificate is recorded in the database of the root CA
+#   ($HOME/tls/db/root_ca/), not in the database of the certificates.
 # - The old files are copied to $HOME/tls/archive/_ca/ca/ first.
 
 # Stop script on error
@@ -77,7 +79,6 @@ print_section_header "Define directory paths"
 set_base_dir
 certs_dir="$base_dir/certs"
 csr_dir="$base_dir/csr"
-db_dir="$base_dir/db"
 config_file="$base_dir/openssl.cnf/ca.cnf"
 certs_root_dir="$certs_dir/root"
 key_file="$base_dir/private/intermediate/ca.pem"
@@ -88,9 +89,15 @@ parent_chain="$certs_root_dir/root_ca_chain_bundle.pem"
 
 enter_home 2
 
+# The database of the authority that signs, as named in the configuration file
+database=$(config_database "$config_file") || {
+  print_error "Cannot read the database path from $config_file. Run tls_directory_setup.sh first."
+  exit 2
+}
+
 # Check that everything needed is present, before anything changes
 missing=false
-for file in "$config_file" "$signer_key" "$signer_cert" "$parent_chain" "$db_dir/index.txt"; do
+for file in "$config_file" "$signer_key" "$signer_cert" "$parent_chain" "$database"; do
   if [[ ! -f "$file" ]]; then
     print_error "Required file not found: $file"
     missing=true
@@ -106,7 +113,7 @@ done
 
 # If unique_subject is enabled and the authority exists, display an error and exit
 if [[ -f "$cert_file" ]]; then
-  if unique_subject_enabled "$db_dir/index.txt.attr"; then
+  if unique_subject_enabled "$database.attr"; then
     print_error "unique_subject is enabled and Intermediate Certificate Authority already exists."
     exit 2
   fi

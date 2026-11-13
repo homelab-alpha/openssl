@@ -127,6 +127,16 @@ crl_number() {
   echo "$((16#${value#crlNumber=0x}))"
 }
 
+entries_of() {
+  grep -c . "$1" || true
+}
+
+serial_of() {
+  local value
+  value=$(openssl x509 -in "$1" -noout -serial)
+  echo "${value#serial=}"
+}
+
 mode_of() {
   stat -c %a "$1"
 }
@@ -134,6 +144,7 @@ mode_of() {
 echo "=== Directory setup ==="
 expect 0 "setup creates the directory structure" bash "$scripts_dir/tls_directory_setup.sh"
 check "private folder has mode 700" test "$(mode_of "$tls/private")" = "700"
+check "every authority has its own database" test -f "$tls/db/trusted_id/index.txt" -a -f "$tls/db/root_ca/index.txt"
 check "crlnumber starts at 1000" test "$(cat "$tls/db/crlnumber")" = "1000"
 echo "# local change" >>"$tls/openssl.cnf/cert.cnf"
 serial_before=$(cat "$tls/db/serial")
@@ -153,6 +164,9 @@ expect 0 "root CA is created" bash "$scripts_dir/certificate-authority/root_ca.s
 check "root CA key is encrypted" grep -q "ENCRYPTED" "$tls/private/root/root_ca.pem"
 expect 0 "intermediate CA is created" bash "$scripts_dir/intermediate-certificate-authority/ca.sh"
 check "intermediate CA key is not encrypted" bash -c "! grep -q ENCRYPTED '$tls/private/intermediate/ca.pem'"
+check "root CA is in the database of the trusted identity" test "$(entries_of "$tls/db/trusted_id/index.txt")" = "1"
+check "intermediate CA is in the database of the root CA" test "$(entries_of "$tls/db/root_ca/index.txt")" = "1"
+check "no authority is in the database of the certificates" test "$(entries_of "$tls/db/index.txt")" = "0"
 expect 2 "root CA is not overwritten while unique_subject is yes" bash "$scripts_dir/certificate-authority/root_ca.sh"
 expect 2 "trusted identity is not overwritten while unique_subject is yes" \
   bash "$scripts_dir/certificate-authority/trusted_id.sh"
@@ -237,6 +251,29 @@ expect 0 "renew --all --dry-run" bash "$scripts_dir/renew_tls_certificates.sh" -
 check "unique_subject is yes after the renewals" grep -q "unique_subject = yes" "$tls/db/index.txt.attr"
 expect 0 "verify passes after the renewal" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
 expect 0 "status reports no problem" bash "$scripts_dir/tls_certificate_status.sh"
+
+echo "=== Shared database of an older version ==="
+# Put the entries of the authorities back in the shared database, as an older
+# version wrote them, and let the setup move them.
+leaf_entries=$(entries_of "$tls/db/index.txt")
+root_serial=$(serial_of "$tls/certs/root/root_ca.pem")
+ca_serial=$(serial_of "$tls/certs/intermediate/ca.pem")
+cat "$tls/db/trusted_id/index.txt" "$tls/db/root_ca/index.txt" >>"$tls/db/index.txt"
+: >"$tls/db/trusted_id/index.txt"
+: >"$tls/db/root_ca/index.txt"
+mv "$tls/newcerts/trusted_id/$root_serial.pem" "$tls/newcerts/root_ca/$ca_serial.pem" "$tls/newcerts/"
+expect 0 "setup moves the entries of the authorities" bash "$scripts_dir/tls_directory_setup.sh"
+check "root CA entry is moved" grep -q "$root_serial" "$tls/db/trusted_id/index.txt"
+check "intermediate CA entry is moved" grep -q "$ca_serial" "$tls/db/root_ca/index.txt"
+check "certificate entries are kept" test "$(entries_of "$tls/db/index.txt")" = "$leaf_entries"
+check "certificate copies are moved" test -f "$tls/newcerts/trusted_id/$root_serial.pem" -a \
+  -f "$tls/newcerts/root_ca/$ca_serial.pem"
+check "a copy of the database is saved" bash -c "ls '$tls'/archive/_database/index.txt.* >/dev/null"
+expect 0 "setup moves nothing a second time" bash "$scripts_dir/tls_directory_setup.sh"
+check "entries are moved once" test "$(entries_of "$tls/db/trusted_id/index.txt")" = "1"
+expect 0 "root CA database is readable for openssl" openssl ca -config "$tls/openssl.cnf/ca.cnf" -updatedb \
+  -passin env:TLS_ROOT_CA_PASSPHRASE
+expect 0 "verify passes after the move" bash "$scripts_dir/verify_tls_certificates.sh" app.example.test
 
 echo "=== Configuration files from before version 0.2.0 ==="
 for file in "$tls"/openssl.cnf/*.cnf; do

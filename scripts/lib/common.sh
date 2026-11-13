@@ -84,6 +84,20 @@ is_valid_fqdn() {
   [[ -n "$1" && "${#1}" -le 64 && "$1" =~ ^(\*\.)?${label}(\.${label})*$ ]]
 }
 
+# Function to print the path of the database (index.txt) that a configuration
+# file names in its "database" line. Every authority has its own database, and
+# a configuration file from an older version can still name the shared one, so
+# the scripts read the path from the file. $ENV::HOME and $HOME become the
+# home directory.
+config_database() {
+  local value
+  value=$(sed -n -E 's/^[[:space:]]*database[[:space:]]*=[[:space:]]*([^#[:space:]]+).*/\1/p' "$1" 2>/dev/null | head -n 1)
+  [[ -n "$value" ]] || return 1
+  value="${value//\$ENV::HOME/$HOME}"
+  value="${value//\$HOME/$HOME}"
+  printf '%s\n' "$value"
+}
+
 # Function to check if unique_subject is "yes" in index.txt.attr
 unique_subject_enabled() {
   grep -Eq '^unique_subject[[:space:]]*=[[:space:]]*yes' "$1" 2>/dev/null
