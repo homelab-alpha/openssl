@@ -68,6 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs(readme): describe wildcard certificates [ceea135](https://github.com/homelab-alpha/openssl/commit/ceea1355b1c6657bd69098729bc2df10ad89bc89) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(renovate): remove default assignees [8d8f2d3](https://github.com/homelab-alpha/openssl/commit/8d8f2d32623daa6749ad1f26b7edaadb790d06ef) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(renovate): group and automerge updates [a5832a1](https://github.com/homelab-alpha/openssl/commit/a5832a1a77bf248cb6710d35416ca884cdafc720) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(sync): sync shared files with blueprint [1bff12a](https://github.com/homelab-alpha/openssl/commit/1bff12ad22906db983c4cfd552e7187ec2e302c1) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
