@@ -1,0 +1,80 @@
+---
+name: 🧪 Test Scripts
+
+# Runs the integration test of the certificate scripts (tests/integration/smoke_test.sh) on a pull
+# request to main. The test runs the whole flow in a temporary home directory: the directory setup,
+# the certificate authorities, one certificate of each kind, verification, revocation, and renewal.
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+concurrency:
+  group: >
+    ${{
+      github.event_name == 'pull_request' &&
+      format('test-scripts-pr-{0}', github.event.pull_request.number) ||
+      format('test-scripts-manual-{0}', github.run_id)
+    }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 🧪 Run the integration test
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+
+    steps:
+      - name: 🏁 Notify start of process
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          echo "::notice title=Workflow started::🧪 Script test started"
+          echo "::group::ℹ️ Execution context"
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Workflow ref: $GITHUB_REF"
+          echo "Runner OS: $RUNNER_OS"
+          echo "Event: $EVENT_NAME"
+          echo "::endgroup::"
+
+      - name: 🏁 Checkout repository source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 🧪 Run the integration test
+        id: test
+        run: |
+          set -Eeuo pipefail
+          echo "::group::ℹ️ Versions"
+          bash --version | head -n 1
+          openssl version
+          echo "::endgroup::"
+          bash tests/integration/smoke_test.sh
+
+      - name: 📊 Generate summary report
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -Eeuo pipefail
+          {
+            echo "## 🧪 Script Test"
+            echo ""
+            echo "- **Status:** ${JOB_STATUS}"
+            echo "- **Event:** ${EVENT_NAME}"
+            echo "- **Test:** \`tests/integration/smoke_test.sh\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$JOB_STATUS" = "success" ]; then
+            echo "::notice title=Script test::✅ All checks passed"
+          else
+            echo "::error title=Script test::❌ The test failed. Run 'bash tests/integration/smoke_test.sh' locally."
+          fi
