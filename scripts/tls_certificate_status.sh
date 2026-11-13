@@ -2,8 +2,8 @@
 
 # Script Name: tls_certificate_status.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 1.2.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 1.1.0
 
 # Description:
 # This script reports the expiry status of all certificates under
@@ -49,27 +49,14 @@ ca_warn_days=180
 quiet=false
 
 # Define directory paths
-# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
-base_dir="$HOME/tls"
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  base_dir="$HOME/ssl"
-  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
-fi
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 3
+set_base_dir
 certs_dir="$base_dir/certs"
 certs_root_dir="$certs_dir/root"
 certs_intermediate_dir="$certs_dir/intermediate"
 certs_certificates_dir="$certs_dir/certificates"
 index_file="$base_dir/db/index.txt"
-
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
-
-# Function to print an error message
-print_error() {
-  echo "[ERROR] $1" >&2
-}
 
 # Function to show the help text
 show_help() {

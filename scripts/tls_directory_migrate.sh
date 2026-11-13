@@ -2,8 +2,8 @@
 
 # Script Name: tls_directory_migrate.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 1.0.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 1.1.0
 
 # Description:
 # This script moves the old directory $HOME/ssl to $HOME/tls and leaves a
@@ -30,20 +30,8 @@
 # The certificates are for a homelab and for testing.
 # Remove the symbolic link $HOME/ssl yourself when nothing uses the old path.
 
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
-
-# Function to print an error message
-print_error() {
-  echo "[ERROR] $1" >&2
-}
-
-# Function to print a warning message
-print_warning() {
-  echo -e "\e[33m[WARNING] $1\e[0m" >&2
-}
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 
 # Function to show the usage (from the header of this script)
 show_help() {
