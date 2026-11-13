@@ -2,119 +2,142 @@
 
 # Script Name: tls_directory_setup.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 2.6.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 3.0.0
 
 # Description:
-# This script sets up the directory structure for TLS certificate management.
-# It generates random serial numbers for certificate databases and creates
-# OpenSSL configuration files for a trusted identity (root certificate
-# authority) and time-stamping authority (TSA). Requires OpenSSL and write
-# permissions in the specified directories.
+# This script sets up the directory structure for TLS certificate management
+# under $HOME/tls. It creates the database files and copies the OpenSSL
+# configuration files from the repository.
+#
+# The script is safe to run again: it creates what is missing and does not
+# change a file that exists. The database files (index.txt, index.txt.attr,
+# serial, and crlnumber) and the configuration files in $HOME/tls/openssl.cnf
+# are kept as they are.
 
-# Usage:
-# Run the script directly without any arguments:
-# ./tls_directory_setup.sh
+# Usage: ./tls_directory_setup.sh [--update-config] [-h|--help]
+#
+# Options:
+#  --update-config  Replace the configuration files in $HOME/tls/openssl.cnf
+#                   that differ from the repository. Each replaced file is
+#                   saved first with the extension .bak-<date>.
+#  -h, --help       Show this help.
 
 # Notes:
 # - Ensure OpenSSL is installed before running the script.
-# - The script creates directories and files under $HOME/tls.
-# - The OpenSSL configuration directory is assumed to be at $HOME/openssl.
+# - The configuration files are read from the folder openssl.cnf of the
+#   repository that holds this script.
+# - The folders for private keys get mode 700 when the script creates them.
+# - The certificates are for a homelab and for testing.
 
-# Function to check if OpenSSL is installed
-check_openssl_installed() {
-  if ! command -v openssl &>/dev/null; then
-    echo "Error: OpenSSL is not installed. Please install it before running this script."
-    exit 1 # Stop the script with an error code
-  fi
-}
+# Stop script on error
+set -Eeuo pipefail
 
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh"
 
-# Function to generate a random hex value
-generate_random_hex() {
-  openssl rand -hex 16 || {
-    echo "Error: Failed to generate random hex."
-    exit 1
-  }
-}
+update_config=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --update-config)
+    update_config=true
+    shift
+    ;;
+  -h | --help)
+    show_usage '^# Notes:'
+    exit 0
+    ;;
+  *)
+    print_error "Unknown option: $1"
+    exit 2
+    ;;
+  esac
+done
 
-# Function to print section headers
-print_section_header() {
-  echo ""
-  print_cyan "=== $1 ==="
-}
+require_openssl
 
 # Set base directory
 base_dir="$HOME/tls"
 # Do not create a second, empty directory while the old one exists.
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  echo "Error: the old directory $HOME/ssl exists. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
+if [[ ! -e "$base_dir" && -d "$HOME/ssl" ]]; then
+  print_error "The old directory $HOME/ssl exists. Run tls_directory_migrate.sh to move it to $HOME/tls."
   exit 1
 fi
 certs_dir="$base_dir/certs"
-crl_dir="$base_dir/crl"
-crl_backup_dir="$base_dir/crl-backup"
-csr_dir="$base_dir/csr"
-extfile_dir="$base_dir/extfiles"
-newcerts_dir="$base_dir/newcerts"
 private_dir="$base_dir/private"
 db_dir="$base_dir/db"
-log_dir="$base_dir/log"
 openssl_conf_dir="$base_dir/openssl.cnf"
 tsa_dir="$base_dir/tsa"
+source_conf_dir="$(dirname "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")")/openssl.cnf"
 
-# Set directories for various components (save keeping)
-# certs_root_dir="$certs_dir/root"
-# certs_intermediate_dir="$certs_dir/intermediate"
-# certs_certificates_dir="$certs_dir/certificates"
-# private_root_dir="$private_dir/root"
-# private_intermediate_dir="$private_dir/intermediate"
-# private_certificates_dir="$private_dir/certificates"
-# tsa_certs_dir="$tsa_dir/certs"
-# tsa_private_dir="$tsa_dir/private"
+# Function to create a file with the given content when it does not exist
+create_if_missing() {
+  local file="$1" content="$2"
+  if [[ -e "$file" ]]; then
+    echo "Kept:    $file"
+  else
+    printf '%s\n' "$content" >"$file"
+    echo "Created: $file"
+  fi
+}
 
-# Create directory structure.
+# Create directory structure. Private key folders are for the owner only.
 print_section_header "Creating directory structure"
+for dir in "$private_dir" "$tsa_dir/private"; do
+  if [[ ! -d "$dir" ]]; then
+    mkdir -p "$dir"
+    chmod 700 "$dir"
+  fi
+done
 mkdir -p "$certs_dir"/{root,intermediate,certificates} \
-  "$crl_dir" \
-  "$crl_backup_dir" \
-  "$csr_dir" \
-  "$extfile_dir" \
-  "$newcerts_dir" \
+  "$base_dir/crl" \
+  "$base_dir/crl-backup" \
+  "$base_dir/csr" \
+  "$base_dir/extfiles" \
+  "$base_dir/newcerts" \
   "$private_dir"/{root,intermediate,certificates} \
   "$db_dir" \
-  "$log_dir" \
+  "$base_dir/log" \
   "$openssl_conf_dir" \
-  "$tsa_dir"/{certs,private,db}
+  "$tsa_dir"/{certs,db}
 
-# Create db files and set unique_subject attribute.
-print_section_header "Creating db files and setting unique_subject attribute"
-touch "$db_dir/index.txt"
-touch "$tsa_dir/db/index.txt"
-
+# Create the db files. Existing files are kept: a new serial or CRL number
+# would break the order of the numbers that are in use.
+print_section_header "Creating db files"
 for dir in "$db_dir" "$tsa_dir/db"; do
-  touch "$dir/index.txt.attr"
-  echo "unique_subject = yes" >"$dir/index.txt.attr"
-done
-
-# Renew db numbers (serial and CRL) in one loop.
-print_section_header "Renewing db numbers (serial and CRL)"
-for type in "serial" "crlnumber"; do
-  for dir in "$db_dir" "$tsa_dir/db"; do
-    generate_random_hex >"$dir/$type"
-  done
+  if [[ -e "$dir/index.txt" ]]; then
+    echo "Kept:    $dir/index.txt"
+  else
+    : >"$dir/index.txt"
+    echo "Created: $dir/index.txt"
+  fi
+  create_if_missing "$dir/index.txt.attr" "unique_subject = yes"
+  create_if_missing "$dir/serial" "$(openssl rand -hex 16)"
+  create_if_missing "$dir/crlnumber" "1000"
 done
 
 # Copy OpenSSL configuration files to the target directory
 print_section_header "Copying OpenSSL configuration files"
-if [ -d "$HOME/openssl/openssl.cnf" ]; then
-  cp -r "$HOME/openssl/openssl.cnf"/* "$openssl_conf_dir/"
+if [[ -d "$source_conf_dir" ]]; then
+  stamp=$(date -u +%Y%m%dT%H%M%SZ)
+  for file in "$source_conf_dir"/*.cnf; do
+    [[ -f "$file" ]] || continue
+    target="$openssl_conf_dir/$(basename "$file")"
+    if [[ ! -e "$target" ]]; then
+      cp "$file" "$target"
+      echo "Created: $target"
+    elif cmp -s "$file" "$target"; then
+      echo "Kept:    $target"
+    elif [[ "$update_config" == "true" ]]; then
+      cp -p "$target" "$target.bak-$stamp"
+      cp "$file" "$target"
+      echo "Updated: $target (the old file is $target.bak-$stamp)"
+    else
+      echo "Kept:    $target (differs from the repository; use --update-config to replace it)"
+    fi
+  done
 else
-  echo "Warning: OpenSSL configuration directory not found at $HOME/openssl/openssl.cnf."
+  print_warning "OpenSSL configuration directory not found at $source_conf_dir."
   echo "Skipping OpenSSL configuration files copy."
 fi
 
