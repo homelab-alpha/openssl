@@ -95,7 +95,8 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
   certificates. Never replace them with the output of the scripts, and never
   commit a real key or certificate, also not a test key. Gitleaks reports the
   placeholders by their header line, so they are listed in `.gitleaksignore`
-  with the path, the rule, and the line number.
+  with the path, the rule, and the line number. When the layout of `~/tls`
+  changes, change the folder by hand with placeholders.
 - `tls_dotfiles_installer.sh` only adds the aliases to `~/.bashrc`. It does not
   remove or change any other file.
 - The documentation site shows the scripts (repository `homelab-alpha/docs`,
