@@ -22,6 +22,7 @@ npm ci                          # install the dev tooling
 npm run lint                    # Prettier, textlint, conflict markers (all files)
 npm run lint -- origin/main     # the same, for the files changed since main
 npm run lint:fix                # repair formatting and terminology, then lint again
+bash tests/integration/smoke_test.sh   # run the scripts in a temporary home
 ```
 
 The dev tooling needs the Node.js version in `engines` in `package.json`.
@@ -55,22 +56,49 @@ the other linters. For one file, `npx prettier --write <file>` uses the same
   localhost certificates), plus `tls_directory_setup.sh`,
   `verify_tls_certificates.sh`, and `tls_dotfiles_installer.sh`. The
   configuration files are in `openssl.cnf/`.
+- `scripts/lib/common.sh` holds the shared functions (messages, the base
+  directory, the FQDN check, passphrases, and the archive). Put a function that
+  two scripts need there, not in both scripts.
+- `scripts/certificate/cert.sh` issues every server and client certificate. The
+  five `cert_*.sh` scripts only start it with fixed options. Keep their usage
+  header in line with `cert.sh`.
+- `tests/integration/smoke_test.sh` runs the whole flow in a temporary home
+  directory (workflow `test_scripts.yml`). Run it after every change to a script
+  or a configuration file, and add a check for new behavior.
+- The certificate scripts never write `db/serial` or `db/crlnumber`, and they
+  put a key or certificate in place only after the checks passed.
+- Every authority has its own database: `db/trusted_id/` and `db/root_ca/` for
+  the certificates of the authorities, and `db/` for the server and client
+  certificates. The authority scripts read the path from the configuration file
+  (`config_database`), because an older file can name the shared database.
+- Name constraints are optional and never a default: the authority scripts add
+  the extension only with `--name-constraints`, and `cert.sh` checks a name
+  against the authorities before it creates anything.
+- An existing authority is only replaced with `--replace`. The authority scripts
+  then mark the old database entry as superseded themselves.
+- Every script that changes a database takes the lock first (`acquire_lock`). A
+  script that holds the lock starts another script with `TLS_LOCK_HELD=1`.
+- New files are put in place with `install_files`, never with separate `cp`
+  commands.
 - Script headers use `# Script Name:` and `# Description:`.
 - The name `ssl` is replaced by `tls`. The old names stay for backward
   compatibility until the next major version: `ssl_*.sh`, `renew_ssl_*.sh`,
   `revoke_ssl_*.sh`, and `verify_ssl_*.sh` are wrappers that start the `tls`
   scripts, the scripts use `~/ssl` while `~/tls` does not exist, and
-  `tls_directory_migrate.sh` moves `~/ssl` to `~/tls`. Keep the wrappers and the
-  fallback block in every script in line when you change a script.
+  `tls_directory_migrate.sh` moves `~/ssl` to `~/tls`. Keep the wrappers in line
+  when you change a script. The fallback is in `set_base_dir` in
+  `scripts/lib/common.sh`.
 - `dotfiles/.bash_aliases` holds the aliases for the scripts and expects the
   repository in `~/openssl`.
-- `examples/tls-directory-structure/` holds example keys and certificates.
-  Gitleaks reports them, so they are listed in `.gitleaksignore` with the path,
-  the rule, and the line number. Update an entry when you change such a file.
-- `tls_dotfiles_installer.sh` removes the files that are only needed to develop
-  the repository from the clone of the user, such as `.git` and `.github` (which
-  holds the tooling, the branding, and the style guide). Keep that list in line
-  with the repository.
+- `examples/tls-directory-structure/` shows the layout of `~/tls`. Its key and
+  certificate files are placeholders with a warning text, not real keys or
+  certificates. Never replace them with the output of the scripts, and never
+  commit a real key or certificate, also not a test key. Gitleaks reports the
+  placeholders by their header line, so they are listed in `.gitleaksignore`
+  with the path, the rule, and the line number. When the layout of `~/tls`
+  changes, change the folder by hand with placeholders.
+- `tls_dotfiles_installer.sh` only adds the aliases to `~/.bashrc`. It does not
+  remove or change any other file.
 - The documentation site shows the scripts (repository `homelab-alpha/docs`,
   folder `content/docs/openssl/script-information/`). Keep the pages in line
   with the scripts.

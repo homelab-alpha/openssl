@@ -2,8 +2,8 @@
 
 # Script Name: tls_certificate_status.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 1.2.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 1.3.0
 
 # Description:
 # This script reports the expiry status of all certificates under
@@ -36,8 +36,9 @@
 
 # Notes:
 # The certificates are for a homelab and for testing.
-# A certificate that is revoked in $HOME/tls/db/index.txt (status R) is shown
-# with the status REVOKED. It is not counted for the exit code.
+# A certificate that is revoked in the database of its authority (status R) is
+# shown with the status REVOKED. It is not counted for the exit code. This also
+# holds for the root CA and the intermediate CA.
 # The .crt copies and the chain and HAProxy bundles are skipped, because they
 # contain the same certificates as the .pem files.
 # Dates are calculated in Bash from the OpenSSL notAfter value, so the script
@@ -49,27 +50,18 @@ ca_warn_days=180
 quiet=false
 
 # Define directory paths
-# Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
-base_dir="$HOME/tls"
-if [ ! -e "$base_dir" ] && [ -d "$HOME/ssl" ]; then
-  base_dir="$HOME/ssl"
-  echo "Warning: using the old directory $HOME/ssl. Run tls_directory_migrate.sh to move it to $HOME/tls." >&2
-fi
+# Stop script on error. The functions below return a status on purpose, and
+# the callers decide what a failure means.
+set -Eeuo pipefail
+
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 3
+set_base_dir
 certs_dir="$base_dir/certs"
 certs_root_dir="$certs_dir/root"
 certs_intermediate_dir="$certs_dir/intermediate"
 certs_certificates_dir="$certs_dir/certificates"
 index_file="$base_dir/db/index.txt"
-
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
-
-# Function to print an error message
-print_error() {
-  echo "[ERROR] $1" >&2
-}
 
 # Function to show the help text
 show_help() {
@@ -86,7 +78,7 @@ parse_arguments() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
     --warn-days)
-      is_number "$2" || {
+      is_number "${2:-}" || {
         print_error "--warn-days needs a number of days."
         exit 3
       }
@@ -94,7 +86,7 @@ parse_arguments() {
       shift 2
       ;;
     --ca-warn-days)
-      is_number "$2" || {
+      is_number "${2:-}" || {
         print_error "--ca-warn-days needs a number of days."
         exit 3
       }
@@ -178,16 +170,23 @@ get_cn() {
   echo "${subject%%,*}"
 }
 
-# Function to check if a certificate is revoked in the database (status R)
+# Function to check if a certificate is revoked (status R) in the database of
+# the authority that signed it. The trusted identity signs itself and has no
+# database entry.
 is_revoked() {
-  local serial
-  [ -f "$index_file" ] || return 1
-  serial=$(openssl x509 -in "$1" -noout -serial 2>/dev/null)
-  serial="${serial#serial=}"
-  awk -F'\t' -v s="$serial" '
-    function norm(x) { x = toupper(x); sub(/^0+/, "", x); return x }
-    $1 == "R" && norm($4) == norm(s) { found = 1 }
-    END { exit !found }' "$index_file"
+  local file="$1" location="$2" config database
+  case "$location" in
+  leaf) config="$base_dir/openssl.cnf/cert.cnf" ;;
+  intermediate) config="$base_dir/openssl.cnf/ca.cnf" ;;
+  root)
+    [[ "$(basename "$file")" = "root_ca.pem" ]] || return 1
+    config="$base_dir/openssl.cnf/root_ca.cnf"
+    ;;
+  *) return 1 ;;
+  esac
+  # Without a readable configuration file, use the database of the certificates
+  database=$(config_database "$config") || database="$index_file"
+  entry_is_revoked "$database" "$file"
 }
 
 # Function to check one certificate and store the result
@@ -200,7 +199,7 @@ check_certificate() {
     had_error=true
     return
   }
-  [ -n "$cn" ] || cn=$(basename "$file" .pem)
+  [[ -n "$cn" ]] || cn=$(basename "$file" .pem)
   type=$(get_type "$file" "$location")
   enddate=$(openssl x509 -in "$file" -noout -enddate 2>/dev/null)
   enddate="${enddate#notAfter=}"
@@ -221,7 +220,7 @@ check_certificate() {
   fi
 
   # Use -checkend for the decision: it is the authoritative OpenSSL check.
-  if is_revoked "$file"; then
+  if is_revoked "$file" "$location"; then
     state="REVOKED"
   elif ! openssl x509 -in "$file" -noout -checkend 0 >/dev/null 2>&1; then
     state="EXPIRED"
@@ -239,13 +238,13 @@ check_certificate() {
 # Function to scan a directory for certificates
 scan_directory() {
   local dir="$1" location="$2" file name
-  [ -d "$dir" ] || {
+  [[ -d "$dir" ]] || {
     print_error "Directory not found: $dir"
     had_error=true
     return
   }
   for file in "$dir"/*.pem; do
-    [ -f "$file" ] || continue
+    [[ -f "$file" ]] || continue
     name=$(basename "$file")
     # Skip bundles and combined files, they hold copies of other certificates
     case "$name" in
@@ -259,21 +258,21 @@ scan_directory() {
 print_results() {
   local days cn type enddate state color
   local reset="" green="" yellow="" red=""
-  if [ -t 1 ]; then
+  if [[ -t 1 ]]; then
     reset="\e[0m"
     green="\e[32m"
     yellow="\e[33m"
     red="\e[31m"
   fi
 
-  [ "${#results[@]}" -gt 0 ] || return
+  [[ "${#results[@]}" -gt 0 ]] || return
 
-  if [ "$quiet" = false ]; then
+  if [[ "$quiet" = false ]]; then
     printf '%-40s %-13s %-26s %6s  %s\n' "NAME (CN)" "TYPE" "EXPIRES" "DAYS" "STATUS"
   fi
 
   while IFS="|" read -r _ days cn type enddate state; do
-    if [ "$quiet" = true ] && [ "$state" = "OK" ]; then
+    if [[ "$quiet" = true ]] && [[ "$state" = "OK" ]]; then
       continue
     fi
     case "$state" in
@@ -299,7 +298,7 @@ if ! command -v openssl >/dev/null 2>&1; then
   exit 3
 fi
 
-if [ ! -d "$certs_dir" ]; then
+if [[ ! -d "$certs_dir" ]]; then
   print_error "Certificate directory not found: $certs_dir"
   exit 3
 fi
@@ -312,17 +311,17 @@ scan_directory "$certs_certificates_dir" "leaf"
 
 print_results
 
-if [ "$quiet" = false ]; then
+if [[ "$quiet" = false ]]; then
   echo
   print_cyan "Thresholds: ${warn_days} days (server and client), ${ca_warn_days} days (CA)."
 fi
 
 # Exit with the most severe result
-if [ "$had_error" = true ]; then
+if [[ "$had_error" = true ]]; then
   exit 3
-elif [ "$had_expired" = true ]; then
+elif [[ "$had_expired" = true ]]; then
   exit 2
-elif [ "$had_warning" = true ]; then
+elif [[ "$had_warning" = true ]]; then
   exit 1
 fi
 exit 0

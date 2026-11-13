@@ -2,8 +2,8 @@
 
 # Script Name: tls_directory_migrate.sh
 # Author: GJS (homelab-alpha)
-# Date: 2026-11-09T10:00:00+01:00
-# Version: 1.0.0
+# Date: 2026-11-13T10:00:00+01:00
+# Version: 1.1.0
 
 # Description:
 # This script moves the old directory $HOME/ssl to $HOME/tls and leaves a
@@ -30,20 +30,12 @@
 # The certificates are for a homelab and for testing.
 # Remove the symbolic link $HOME/ssl yourself when nothing uses the old path.
 
-# Function to print text in cyan color
-print_cyan() {
-  echo -e "\e[36m$1\e[0m"
-}
+# Stop script on error. The functions below return a status on purpose, and
+# the callers decide what a failure means.
+set -Eeuo pipefail
 
-# Function to print an error message
-print_error() {
-  echo "[ERROR] $1" >&2
-}
-
-# Function to print a warning message
-print_warning() {
-  echo -e "\e[33m[WARNING] $1\e[0m" >&2
-}
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 
 # Function to show the usage (from the header of this script)
 show_help() {
@@ -56,7 +48,7 @@ new_dir="$HOME/tls"
 
 # Parse the arguments
 dry_run=false
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   case "$1" in
   --dry-run)
     dry_run=true
@@ -74,17 +66,17 @@ while [ $# -gt 0 ]; do
 done
 
 # Decide what to do
-if [ -L "$old_dir" ]; then
+if [[ -L "$old_dir" ]]; then
   echo "Nothing to do: $old_dir is already a symbolic link."
   exit 0
 fi
 
-if [ ! -d "$old_dir" ]; then
+if [[ ! -d "$old_dir" ]]; then
   echo "Nothing to do: $old_dir does not exist."
   exit 0
 fi
 
-if [ -e "$new_dir" ]; then
+if [[ -e "$new_dir" ]]; then
   print_error "Both $old_dir and $new_dir exist. Check them and move or remove one yourself."
   exit 2
 fi
@@ -92,7 +84,7 @@ fi
 # List the configuration files that contain the old path
 config_files=()
 for file in "$old_dir"/openssl.cnf/*.cnf; do
-  [ -f "$file" ] || continue
+  [[ -f "$file" ]] || continue
   if grep -q 'HOME/ssl' "$file"; then
     config_files+=("$file")
   fi
@@ -103,7 +95,7 @@ echo "Move:   $old_dir -> $new_dir"
 echo "Link:   $old_dir -> tls"
 echo "Config: ${#config_files[@]} file(s) with the path \$HOME/ssl are changed (a copy is saved as .pre-tls)."
 
-if [ "$dry_run" = true ]; then
+if [[ "$dry_run" = true ]]; then
   echo "Dry run: nothing was changed."
   exit 0
 fi
