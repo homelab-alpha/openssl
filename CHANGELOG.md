@@ -69,6 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore(renovate): remove default assignees [8d8f2d3](https://github.com/homelab-alpha/openssl/commit/8d8f2d32623daa6749ad1f26b7edaadb790d06ef) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(renovate): group and automerge updates [a5832a1](https://github.com/homelab-alpha/openssl/commit/a5832a1a77bf248cb6710d35416ca884cdafc720) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(sync): sync shared files with blueprint [1bff12a](https://github.com/homelab-alpha/openssl/commit/1bff12ad22906db983c4cfd552e7187ec2e302c1) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs: move and update AI contribution policy [8eb1077](https://github.com/homelab-alpha/openssl/commit/8eb1077af5bbfa4adaa164fec6f017251a3b1a77) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore: sync files with the blueprint [0aecbf0](https://github.com/homelab-alpha/openssl/commit/0aecbf0519b5e682b439bc7edc3601a06144b605) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
