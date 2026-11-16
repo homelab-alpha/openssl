@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docs: move and update AI contribution policy [8eb1077](https://github.com/homelab-alpha/openssl/commit/8eb1077af5bbfa4adaa164fec6f017251a3b1a77) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore: sync files with the blueprint [0aecbf0](https://github.com/homelab-alpha/openssl/commit/0aecbf0519b5e682b439bc7edc3601a06144b605) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(workflows): allow the PSF-2.0 license [5a8f7a5](https://github.com/homelab-alpha/openssl/commit/5a8f7a573ebf6c8c80977ffb147c7319ddcb0855) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(workflows): allow more MIT-like licenses [466079a](https://github.com/homelab-alpha/openssl/commit/466079a7503a0a8188a01b7b626b2a5b5580857b) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
