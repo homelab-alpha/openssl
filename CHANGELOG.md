@@ -98,6 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(examples): make the example hook executable [20b0f46](https://github.com/homelab-alpha/openssl/commit/20b0f46974bed9d80d38273aa8cbd2d2abd8bcd0) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(scripts): correct SAN for wildcard certs [b3bfbdf](https://github.com/homelab-alpha/openssl/commit/b3bfbdf852ce77cc8df87d4c45249f782057ceb5) by [@homelab-alpha](https://github.com/homelab-alpha)
 - fix(workflow): do not draft Renovate PRs [b8fbe70](https://github.com/homelab-alpha/openssl/commit/b8fbe70de1674ddf9733461bcf1d75c90e6b8563) by [@homelab-alpha](https://github.com/homelab-alpha)
+- fix(renovate): remove invalid security rule that disabled grouping [1c04e39](https://github.com/homelab-alpha/openssl/commit/1c04e398661779d0c1d10594da5c52afc46f3278) by [@homelab-alpha](https://github.com/homelab-alpha)
+- fix(renovate): label all updates in a group [1e5639d](https://github.com/homelab-alpha/openssl/commit/1e5639d2f33082a5784ee6a20e19d1be7c2c1ac2) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Security
 
