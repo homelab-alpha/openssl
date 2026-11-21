@@ -75,6 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore(workflows): allow more MIT-like licenses [466079a](https://github.com/homelab-alpha/openssl/commit/466079a7503a0a8188a01b7b626b2a5b5580857b) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(renovate): group npm updates in one pr [89ec812](https://github.com/homelab-alpha/openssl/commit/89ec812088dedaf8689ae9e414bd2a5015318208) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(renovate): group docker compose images [7c5f577](https://github.com/homelab-alpha/openssl/commit/7c5f577509ef5dfc7bdac59692f70371a71785e5) by [@homelab-alpha](https://github.com/homelab-alpha)
+- chore(labels): add renovate dependency labels [357f704](https://github.com/homelab-alpha/openssl/commit/357f704cc4f0bbea40a8b7199c9ae575b41f7d04) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
