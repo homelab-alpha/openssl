@@ -44,6 +44,12 @@ set -Eeuo pipefail
 # shellcheck source=scripts/lib/common.sh
 source "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/lib/common.sh" || exit 2
 
+# Colors of the results, empty when NO_COLOR is set (https://no-color.org)
+red='\033[31m' green='\033[32m' reset='\033[0m'
+if [[ -n "${NO_COLOR:-}" ]]; then
+  red="" green="" reset=""
+fi
+
 # Set the base directory. The old name ~/ssl is used while ~/tls does not exist.
 set_base_dir
 certs_dir="$base_dir/certs"
@@ -65,7 +71,7 @@ verify_certificate() {
   print_section_header "$title"
   for file in "$cert_path" "$chain_path"; do
     if [[ ! -f "$file" ]]; then
-      echo -e "$file: \033[31m[FAIL] - File not found\033[0m"
+      echo -e "$file: ${red}[FAIL] - File not found${reset}"
       failures=$((failures + 1))
       return
     fi
@@ -75,9 +81,9 @@ verify_certificate() {
   result=$(openssl verify ${options[@]+"${options[@]}"} -CAfile "$chain_path" "$cert_path" 2>&1) || status=$?
 
   if [[ "$status" -eq 0 ]]; then
-    echo -e "$cert_path: \033[32m[PASS]\033[0m"
+    echo -e "$cert_path: ${green}[PASS]${reset}"
   else
-    echo -e "$cert_path: \033[31m[FAIL]\033[0m"
+    echo -e "$cert_path: ${red}[FAIL]${reset}"
     failures=$((failures + 1))
   fi
 
@@ -134,7 +140,7 @@ verify_bundle() {
   print_section_header "$title"
   for file in "$cert_path" "$bundle_path" "$anchor"; do
     if [[ ! -f "$file" ]]; then
-      echo -e "$file: \033[31m[FAIL] - File not found\033[0m"
+      echo -e "$file: ${red}[FAIL] - File not found${reset}"
       failures=$((failures + 1))
       return
     fi
@@ -149,9 +155,9 @@ verify_bundle() {
   fi
 
   if [[ "$status" -eq 0 ]]; then
-    echo -e "$bundle_path: \033[32m[PASS]\033[0m"
+    echo -e "$bundle_path: ${green}[PASS]${reset}"
   else
-    echo -e "$bundle_path: \033[31m[FAIL]\033[0m"
+    echo -e "$bundle_path: ${red}[FAIL]${reset}"
     failures=$((failures + 1))
   fi
   if [[ "$verbose" == "true" || "$status" -ne 0 ]]; then
@@ -166,9 +172,9 @@ verify_bundle_key() {
 
   print_section_header "$title"
   if [[ "$(openssl pkey -in "$bundle_path" -pubout 2>/dev/null)" == "$(openssl x509 -in "$cert_path" -noout -pubkey 2>/dev/null)" ]]; then
-    echo -e "$bundle_path: \033[32m[PASS]\033[0m"
+    echo -e "$bundle_path: ${green}[PASS]${reset}"
   else
-    echo -e "$bundle_path: \033[31m[FAIL]\033[0m"
+    echo -e "$bundle_path: ${red}[FAIL]${reset}"
     echo "The private key in the bundle does not match the certificate, or the bundle cannot be read."
     failures=$((failures + 1))
   fi
