@@ -258,7 +258,7 @@ scan_directory() {
 print_results() {
   local days cn type enddate state color
   local reset="" green="" yellow="" red=""
-  if [[ -t 1 ]]; then
+  if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
     reset="\e[0m"
     green="\e[32m"
     yellow="\e[33m"

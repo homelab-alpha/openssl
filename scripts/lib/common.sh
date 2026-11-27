@@ -21,7 +21,11 @@
 
 # Function to print text in cyan color
 print_cyan() {
-  echo -e "\e[36m$1\e[0m"
+  if [[ -n "${NO_COLOR:-}" ]]; then
+    echo -e "$1"
+  else
+    echo -e "\e[36m$1\e[0m"
+  fi
 }
 
 # Function to print an error message
@@ -31,7 +35,11 @@ print_error() {
 
 # Function to print a warning message
 print_warning() {
-  echo -e "\e[33m[WARNING] $1\e[0m" >&2
+  if [[ -n "${NO_COLOR:-}" ]]; then
+    echo -e "[WARNING] $1" >&2
+  else
+    echo -e "\e[33m[WARNING] $1\e[0m" >&2
+  fi
 }
 
 # Function to print section headers
