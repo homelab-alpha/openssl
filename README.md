@@ -11,10 +11,10 @@
 [![CodeQL](https://github.com/homelab-alpha/openssl/raw/badges/codeql.svg)](https://github.com/homelab-alpha/openssl/actions/workflows/codeql.yml)
 [![Last commit](https://github.com/homelab-alpha/openssl/raw/badges/last_commit.svg)](https://github.com/homelab-alpha/openssl/commits/main/)
 [![Repo size](https://github.com/homelab-alpha/openssl/raw/badges/repo_size.svg)](https://github.com/homelab-alpha/openssl/tree/main)
-[![Changelog](https://github.com/homelab-alpha/openssl/raw/badges/changelog.svg)](https://github.com/homelab-alpha/openssl/blob/main/CHANGELOG.md)
-[![Contributor Covenant](https://github.com/homelab-alpha/openssl/raw/badges/contributor_covenant.svg)](https://github.com/homelab-alpha/openssl/blob/main/CODE_OF_CONDUCT.md)
-[![Conventional Commits](https://github.com/homelab-alpha/openssl/raw/badges/conventional_commits.svg)](https://conventionalcommits.org)
-[![Semantic Versioning](https://github.com/homelab-alpha/openssl/raw/badges/semver.svg)](https://semver.org/spec/v2.0.0.html)
+[![Changelog: Keep a Changelog 1.1.0](https://github.com/homelab-alpha/openssl/raw/badges/changelog.svg)](https://github.com/homelab-alpha/openssl/blob/main/CHANGELOG.md)
+[![Contributor Covenant: 3.0](https://github.com/homelab-alpha/openssl/raw/badges/contributor_covenant.svg)](https://github.com/homelab-alpha/openssl/blob/main/CODE_OF_CONDUCT.md)
+[![Conventional Commits: 1.0.0](https://github.com/homelab-alpha/openssl/raw/badges/conventional_commits.svg)](https://conventionalcommits.org)
+[![Semantic Versioning: 2.0.0](https://github.com/homelab-alpha/openssl/raw/badges/semver.svg)](https://semver.org/spec/v2.0.0.html)
 [![License](https://github.com/homelab-alpha/openssl/raw/badges/license.svg)](https://github.com/homelab-alpha/openssl/blob/main/LICENSE)
 
 # OpenSSL
