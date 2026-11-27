@@ -60,9 +60,10 @@ certificates for a homelab.
        1. [Currently Being Addressed](#currently-being-addressed)
    14. [Contributing](#contributing)
    15. [Support](#support)
-   16. [Security](#security)
-   17. [Roadmap](#roadmap)
-   18. [License](#license)
+   16. [Accessibility](#accessibility)
+   17. [Security](#security)
+   18. [Roadmap](#roadmap)
+   19. [License](#license)
 
   </p>
 </details>
@@ -837,6 +838,11 @@ the review process. AI-assisted contributions follow
 
 For setup questions, troubleshooting, and general help, see
 [SUPPORT.md](./SUPPORT.md).
+
+## Accessibility
+
+Our accessibility goals, the known limitations, and how to report a barrier are
+described in [ACCESSIBILITY.md](./ACCESSIBILITY.md).
 
 ## Security
 
