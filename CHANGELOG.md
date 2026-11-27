@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(scripts): allow multiple IPs in server certs [0c2d90b](https://github.com/homelab-alpha/openssl/commit/0c2d90b17595148459f0eadbaeca71d515b59844) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts): allow spaces after commas in --ip [715eabb](https://github.com/homelab-alpha/openssl/commit/715eabbea427af9bd2f435e160ff6b5726e0c372) by [@homelab-alpha](https://github.com/homelab-alpha)
 - feat(scripts)!: harden the scripts after a code audit [f21e417](https://github.com/homelab-alpha/openssl/commit/f21e417386bd75035a3c28faf90550a55ecc8060) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(github): add accessibility checks [c2a3016](https://github.com/homelab-alpha/openssl/commit/c2a301621cc0e2ba17c26769579f7bfb97571bb6) by [@homelab-alpha](https://github.com/homelab-alpha)
+- feat(scripts): support NO_COLOR [69cf6d1](https://github.com/homelab-alpha/openssl/commit/69cf6d11f6114362f46d2af74d6182340dd9116a) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Changed
 
@@ -77,6 +79,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore(renovate): group docker compose images [7c5f577](https://github.com/homelab-alpha/openssl/commit/7c5f577509ef5dfc7bdac59692f70371a71785e5) by [@homelab-alpha](https://github.com/homelab-alpha)
 - chore(labels): add renovate dependency labels [357f704](https://github.com/homelab-alpha/openssl/commit/357f704cc4f0bbea40a8b7199c9ae575b41f7d04) by [@homelab-alpha](https://github.com/homelab-alpha)
 - docs: add conventional commits cheatsheet [acd1056](https://github.com/homelab-alpha/openssl/commit/acd1056ec173bc5a92ca75982f5dc1f1b2ccad05) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs(readme): add values to badge alt text [af8ab1b](https://github.com/homelab-alpha/openssl/commit/af8ab1b98d5856bfb0180095837131f9130bc1e5) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs: add accessibility statement [3dc45a4](https://github.com/homelab-alpha/openssl/commit/3dc45a479793c8405d4b90f8769308d3b2133f07) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs: link the accessibility statement [77f6f97](https://github.com/homelab-alpha/openssl/commit/77f6f9705f79577ada690d9f80d74e199fa1b2da) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs: document NO_COLOR support [b045756](https://github.com/homelab-alpha/openssl/commit/b04575693ed0b35ca3fd8cfdbb4df884065106ac) by [@homelab-alpha](https://github.com/homelab-alpha)
+- docs: update the accessibility statement [5cd80f7](https://github.com/homelab-alpha/openssl/commit/5cd80f7f46a17c1534b0c498cb2a35d5f7d92112) by [@homelab-alpha](https://github.com/homelab-alpha)
 
 ### Deprecated
 
